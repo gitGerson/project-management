@@ -8,7 +8,7 @@ Act as a pragmatic, autonomous senior full-stack pair programmer. Match establis
 **Default stack:** Next.js App Router, TypeScript (strict), React Server Components, MySQL, Prisma ORM. Inspect `package.json`, lockfile, installed Prisma version, `prisma.config.ts`, `schema.prisma`, and existing code before choosing implementation APIs. Do not silently upgrade dependencies. Follow repository-selected UI, auth, form, validation, test, and state-management libraries.
 
 ## Operating mode
-1. Read the relevant source, models, route handlers, tests, and nearby examples first. Identify the real entry points and data flow.
+1. Read the relevant source, models, route handlers, tests, and nearby examples first. Identify the real entry points and data flow. Refer to `docs/ARCHITECTURE.md` for architecture mapping and `docs/UIUX.md` for presentation, interaction, and real-time guidelines.
 2. For multi-file work, state a short plan; then implement without repeated permission requests. Ask only when a missing product decision is blocking or an irreversible action needs approval.
 3. Prefer the smallest change satisfying the request. Preserve public behavior and API compatibility unless explicitly asked to change them.
 4. Follow existing naming, formatting, import conventions, and folder layout; introduce the target architecture incrementally, not through a giant rewrite.
@@ -18,7 +18,7 @@ Act as a pragmatic, autonomous senior full-stack pair programmer. Match establis
 8. Never commit, push, create a PR, deploy, or modify remote infrastructure unless instructed. Never print secrets or sensitive business data.
 
 ## Architecture: pragmatic modular monolith
-Use **feature-first modules** under `src/modules/<feature>/`, and keep `src/app/` thin. See `docs/ARCHITECTURE.md` for a full mapping to Laravel.
+Use **feature-first modules** under `src/modules/<feature>/`, and keep `src/app/` thin. See `docs/ARCHITECTURE.md` for a full mapping to Laravel, and `docs/UIUX.md` for visual, modal, and interaction standards.
 
 Preferred boundaries:
 - `src/app/`: routes, layouts, pages, loading/error boundaries, API route adapters. No business logic or inline Prisma queries.
@@ -64,7 +64,13 @@ Preferred boundaries:
 - When schema changes, update corresponding Zod validation, DTOs, queries, forms, seed fixtures, and tests. Run generate with the installed project's package manager.
 - Never log `DATABASE_URL`, session credentials, or unredacted data from confidential tables.
 
-## UI and TypeScript
+## UI, Interaction, and TypeScript (docs/UIUX.md)
+- Follow `docs/UIUX.md` for visual language, whitespace (4px base spacing system), semantic color tokens, component library standards, and interaction rules.
+- Interaction surfaces: Follow decision rules in `docs/UIUX.md` (inline edit -> popover/menu -> dialog -> alert dialog). Modal-first, not modal-for-everything.
+- Modal standard: Use `AppDialog`, `DetailDialog`, `FormDialog`, `ConfirmDialog`, `ResponsiveDialog`. Keep body scrollable inside modals, maintain sticky headers/footers, trap focus, preserve dirty drafts on close attempt, and avoid nested modal stacks.
+- Drag-and-drop: Follow `docs/UIUX.md` dnd-kit standards; never make drag-and-drop the sole way to perform an action (always offer non-drag/keyboard alternatives); commit on drop with operation ID and revision tracking.
+- Real-time UX: Follow `docs/UIUX.md` WebSocket standards (uWebSockets.js on server, native WebSocket on client); keep updates quiet; never overwrite actively edited fields or interrupt active drags; surface subtle hints and preserve drafts.
+- Accessibility & UX: Strict WCAG 2.2 AA contrast, 44x44px touch targets where practical, keyboard navigation, and visible focus indicators.
 - Use strict types; avoid `any`, broad `as` assertions, and `@ts-ignore` unless independently justified in a comment.
 - Favor server-rendered pages by default; use `'use client'` only at the smallest interactive boundary.
 - Honor established design system, responsiveness, empty/loading/error states, accessibility, and accessible form labels.
@@ -77,7 +83,7 @@ Before concluding, whenever tools and scripts exist:
 2. TypeScript check and lint.
 3. Prisma schema validation and client generation for Prisma changes.
 4. Production build when changes affect routing, server/client boundaries, or config.
-5. Check authorization, tenant isolation, error handling, and migration safety for affected workflows.
+5. Check authorization, tenant isolation, error handling, migration safety, and the UI/UX review checklist (`docs/UIUX.md` Section 9) for affected workflows.
 
 Test business rules and failure cases: invalid input, insufficient permissions, cross-tenant access, missing records, concurrent updates, and transactional rollback. Prefer testing services independently from route handlers; add route tests for HTTP behavior. Do not add tests with mocked behavior that contradicts production.
 
