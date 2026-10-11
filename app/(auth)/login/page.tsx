@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import LoginForm from '@/modules/auth/components/LoginForm';
 
 export const metadata: Metadata = {
-  title: 'Sign In - Project Management',
-  description: 'Sign in to access your account',
+  title: 'Tong Tji Board | Login',
+  description: 'Sign in with your LDAP account to access Tong Tji Board',
 };
 
 export default function LoginPage() {

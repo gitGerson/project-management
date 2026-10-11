@@ -1,0 +1,26 @@
+:root {
+  --bs-primary: #309144;
+  --bs-primary-rgb: 48, 145, 68;
+}
+
+.bg-primary {
+  background-color: var(--bs-primary) !important;
+}
+
+.text-primary {
+  color: var(--bs-primary) !important;
+}
+
+.border-primary {
+  border-color: var(--bs-primary) !important;
+}
+
+.btn-primary {
+  background-color: #309144;
+  border-color: #309144;
+}
+
+.btn-primary:hover {
+  background-color: #297c3b; /* versi lebih gelap */
+  border-color: #297c3b;
+}
