@@ -130,7 +130,7 @@ export function ProfileDropdown({
 
       {/* Copyright */}
       <div className="px-4 py-1 text-center text-[11px] text-gray-400 select-none">
-        © {new Date().getFullYear()} , TTI IT RND Team
+        © {new Date().getFullYear()} , Tong Tji IT RnD Team
       </div>
     </div>
   );
