@@ -118,7 +118,6 @@ export function Header({ user }: HeaderProps) {
 
       {/* Profile Settings Modal */}
       <ProfileSettingsModal
-        key={`${isProfileModalOpen}-${profileModalTab}`}
         user={user}
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}

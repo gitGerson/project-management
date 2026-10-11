@@ -32,6 +32,7 @@ export function ProfileSettingsModal({
   initialTab = 'profile',
 }: ProfileSettingsModalProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const [prevInitialTab, setPrevInitialTab] = useState(initialTab);
   const [activeTab, setActiveTab] = useState<'profile' | 'integrations'>(initialTab);
   const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
@@ -39,22 +40,44 @@ export function ProfileSettingsModal({
   const [secondaryEmail, setSecondaryEmail] = useState('');
   const [secondaryEmailSaved, setSecondaryEmailSaved] = useState(false);
 
+  // Sync tab if initialTab changes while opening
+  if (initialTab !== prevInitialTab) {
+    setPrevInitialTab(initialTab);
+    setActiveTab(initialTab);
+  }
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const isClosingRef = useRef(false);
 
-  // Trigger enter animation on mount
+  // Trigger enter/exit animation strictly coordinated with isOpen
   useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      setIsVisible(true);
-    });
-    return () => cancelAnimationFrame(raf);
-  }, []);
+    let raf: number | undefined;
+
+    if (isOpen) {
+      isClosingRef.current = false;
+      raf = requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+    } else {
+      raf = requestAnimationFrame(() => {
+        setIsVisible(false);
+      });
+    }
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [isOpen]);
 
   // Graceful dismiss handler with exit transition
   const handleDismiss = useCallback(() => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
     setIsVisible(false);
     const timer = setTimeout(() => {
       onClose();
+      isClosingRef.current = false;
     }, 200);
     return () => clearTimeout(timer);
   }, [onClose]);
@@ -62,13 +85,13 @@ export function ProfileSettingsModal({
   // Handle ESC key to close modal with animation
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && isOpen) {
         handleDismiss();
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDismiss]);
+  }, [isOpen, handleDismiss]);
 
   if (!isOpen && !isVisible) return null;
 
