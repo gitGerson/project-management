@@ -39,3 +39,13 @@ export const databaseConfig: DatabaseConfig = {
 
 export default databaseConfig;
 
+/**
+ * Constructs a standard MySQL database URL from the Laravel-style DB configuration
+ * Format: mysql://USER:PASSWORD@HOST:PORT/DATABASE
+ */
+export function buildDatabaseUrl(): string {
+  const config = databaseConfig.connections.mysql;
+  const user = encodeURIComponent(config.username);
+  const password = config.password ? `:${encodeURIComponent(config.password)}` : '';
+  return `mysql://${user}${password}@${config.host}:${config.port}/${config.database}`;
+}
