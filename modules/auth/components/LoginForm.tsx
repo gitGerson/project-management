@@ -1,7 +1,6 @@
 'use client';
 
 import { useActionState } from 'react';
-import Link from 'next/link';
 import { loginAction } from '@/modules/auth/actions';
 import type { ActionResponse } from '@/modules/auth/types';
 
@@ -16,7 +15,7 @@ export default function LoginForm() {
     <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-lg border border-gray-100">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-gray-900">Sign In</h1>
-        <p className="mt-2 text-sm text-gray-600">Enter your credentials to access your account</p>
+        <p className="mt-2 text-sm text-gray-600">Enter your LDAP credentials to access your account</p>
       </div>
 
       {state?.message && !state.success && (
@@ -36,7 +35,7 @@ export default function LoginForm() {
             type="text"
             required
             autoComplete="username"
-            placeholder="johndoe"
+            placeholder="Username / UID"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
           />
           {state?.errors?.username && (
@@ -71,11 +70,10 @@ export default function LoginForm() {
         </button>
       </form>
 
-      <div className="text-center text-sm text-gray-600">
-        Don&apos;t have an account?{' '}
-        <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500 underline">
-          Register here
-        </Link>
+      <div className="text-center text-xs text-gray-500 pt-2 border-t border-gray-100">
+        Sign in with your corporate LDAP account.
+        <br />
+        Contact your IT administrator if you need account access.
       </div>
     </div>
   );

@@ -1,12 +1,6 @@
-import type { Metadata } from 'next';
-import RegisterForm from '@/modules/auth/components/RegisterForm';
-
-export const metadata: Metadata = {
-  title: 'Create an Account - Project Management',
-  description: 'Register for a new account',
-};
+import { redirect } from 'next/navigation';
 
 export default function RegisterPage() {
-  return <RegisterForm />;
+  redirect('/login');
 }
 

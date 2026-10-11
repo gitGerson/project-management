@@ -14,20 +14,14 @@ async function AuthSection() {
     return (
       <div className="space-y-4">
         <p className="text-sm text-gray-600">
-          Please sign in or create a new account to continue.
+          Please sign in with your corporate account to continue.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div>
           <Link
             href="/login"
-            className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm text-center"
+            className="block w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-sm text-center"
           >
             Sign In
-          </Link>
-          <Link
-            href="/register"
-            className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-lg transition border border-gray-200 text-center"
-          >
-            Create Account
           </Link>
         </div>
       </div>
