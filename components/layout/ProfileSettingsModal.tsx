@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
   User,
@@ -31,6 +31,7 @@ export function ProfileSettingsModal({
   onClose,
   initialTab = 'profile',
 }: ProfileSettingsModalProps) {
+  const [isVisible, setIsVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'integrations'>(initialTab);
   const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
@@ -41,18 +42,35 @@ export function ProfileSettingsModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Handle ESC key to close modal
+  // Trigger enter animation on mount
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // Graceful dismiss handler with exit transition
+  const handleDismiss = useCallback(() => {
+    setIsVisible(false);
+    const timer = setTimeout(() => {
+      onClose();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  // Handle ESC key to close modal with animation
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && isOpen) {
-        onClose();
+      if (event.key === 'Escape') {
+        handleDismiss();
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [handleDismiss]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !isVisible) return null;
 
   const getInitials = (name?: string) => {
     if (!name) return 'U';
@@ -86,18 +104,28 @@ export function ProfileSettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150"
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto transition-opacity duration-200 ease-in-out motion-reduce:transition-none ${
+        isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="profile-settings-title"
     >
-      {/* Click outside backdrop */}
-      <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
+      {/* Click outside backdrop with blur */}
+      <div
+        className="fixed inset-0 bg-black/45 backdrop-blur-xs transition-opacity duration-200 ease-in-out motion-reduce:transition-none"
+        onClick={handleDismiss}
+        aria-hidden="true"
+      />
 
       {/* Modal Dialog Card */}
       <div
         ref={modalRef}
-        className="relative bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] z-10"
+        className={`relative bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] z-10 transition-all duration-200 ease-in-out motion-reduce:transition-none motion-reduce:transform-none ${
+          isVisible
+            ? 'opacity-100 scale-100 translate-y-0'
+            : 'opacity-0 scale-95 translate-y-2'
+        }`}
       >
         {/* Modal Header */}
         <div className="px-6 pt-5 pb-0 border-b border-gray-100 flex flex-col gap-4">
@@ -112,7 +140,7 @@ export function ProfileSettingsModal({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleDismiss}
               className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center transition cursor-pointer"
               aria-label="Close settings"
             >
@@ -438,7 +466,7 @@ export function ProfileSettingsModal({
         <div className="px-6 py-4 bg-gray-50/80 border-t border-gray-100 flex items-center justify-end gap-3">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleDismiss}
             className="px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition cursor-pointer"
           >
             Close
@@ -446,7 +474,7 @@ export function ProfileSettingsModal({
           {activeTab === 'profile' && (
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleDismiss}
               className="px-4 py-2 bg-[#15803d] hover:bg-green-800 text-white rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer shadow-xs"
             >
               Save Changes
