@@ -1,36 +1,11 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Next.js pragmatic agent kit
 
-## Getting Started
+Copy `AGENTS.md` to the **root** of your Next.js repository and copy `docs/ARCHITECTURE.md` to `docs/ARCHITECTURE.md`.
 
-First, run the development server:
+`AGENTS.md` is the broadly supported repository instruction filename (plural); `agent.md` is not necessarily discovered automatically. If your particular agent uses another filename, point it explicitly at `AGENTS.md` or copy its contents to the agent-specific instructions file.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+This kit assumes **Next.js App Router + TypeScript + MySQL + Prisma**, but explicitly requires the agent to inspect installed versions and existing project conventions. It is deliberately not a full framework scaffold and does not modify your existing project.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Recommended first request to your agent:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> Read AGENTS.md and docs/ARCHITECTURE.md. Audit the current Next.js codebase against these conventions, identify the top five architectural/security risks, and propose an incremental migration. Do not refactor or change the database until I approve a concrete plan.
