@@ -2,8 +2,14 @@
 
 import { useActionState, useState } from 'react';
 import Image from 'next/image';
+import { Eye, EyeOff, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { loginAction } from '@/modules/auth/actions';
 import type { ActionResponse } from '@/modules/auth/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Alert } from '@/components/ui/alert';
 import './login.css';
 
 const initialState: ActionResponse = {
@@ -107,10 +113,15 @@ export default function LoginForm() {
               <button
                 type="button"
                 onClick={() => setShowReleaseNotes(!showReleaseNotes)}
-                className="btn-release-notes"
+                className="btn-release-notes gap-2"
                 aria-expanded={showReleaseNotes}
               >
-                Version Release Notes &amp; Updates
+                <span>Version Release Notes &amp; Updates</span>
+                {showReleaseNotes ? (
+                  <ChevronUp className="w-4 h-4 ml-1" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 ml-1" />
+                )}
               </button>
             </div>
 
@@ -170,31 +181,31 @@ export default function LoginForm() {
               </p>
             </div>
 
-            {/* Error Message */}
+            {/* Accessible Error Alert */}
             {state?.message && !state.success && (
-              <div className="mb-4 p-3 text-xs md:text-sm text-red-700 bg-red-50 border border-red-200 rounded-md">
-                {state.message}
+              <div className="mb-4">
+                <Alert variant="destructive">
+                  {state.message}
+                </Alert>
               </div>
             )}
 
             {/* Form */}
             <form action={formAction} className="space-y-4">
               <div>
-                <label
-                  htmlFor="username"
-                  className="block text-xs md:text-sm font-medium text-gray-700 mb-1"
-                >
+                <Label htmlFor="username" className="mb-1 block">
                   Username
-                </label>
-                <input
+                </Label>
+                <Input
                   id="username"
                   name="username"
                   type="text"
+                  variant="flat"
+                  hasError={!!state?.errors?.username}
                   required
                   autoFocus
                   autoComplete="username"
                   placeholder="Enter your username"
-                  className="flat-input-white"
                 />
                 {state?.errors?.username && (
                   <p className="mt-1 text-xs text-red-600">{state.errors.username[0]}</p>
@@ -202,63 +213,31 @@ export default function LoginForm() {
               </div>
 
               <div>
-                <label
-                  htmlFor="password"
-                  className="block text-xs md:text-sm font-medium text-gray-700 mb-1"
-                >
+                <Label htmlFor="password" className="mb-1 block">
                   Password
-                </label>
+                </Label>
                 <div className="relative flex items-center">
-                  <input
+                  <Input
                     id="password"
                     name="password"
                     type={showPassword ? 'text' : 'password'}
+                    variant="flat"
+                    hasError={!!state?.errors?.password}
                     required
                     autoComplete="current-password"
                     placeholder="••••••••••••"
-                    className="flat-input-white pr-8"
+                    className="pr-8"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-0 bottom-2 text-gray-400 hover:text-gray-600 cursor-pointer p-1"
+                    className="absolute right-0 bottom-2 text-gray-400 hover:text-gray-600 cursor-pointer p-1 transition-colors"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={1.75}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"
-                        />
-                      </svg>
+                      <EyeOff className="w-4 h-4" />
                     ) : (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={1.75}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                        />
-                      </svg>
+                      <Eye className="w-4 h-4" />
                     )}
                   </button>
                 </div>
@@ -270,26 +249,29 @@ export default function LoginForm() {
               <div className="pt-1">
                 <label
                   htmlFor="remember"
-                  className="inline-flex items-center space-x-2 text-xs md:text-sm text-gray-500 cursor-pointer"
+                  className="inline-flex items-center space-x-2 text-xs md:text-sm text-gray-600 cursor-pointer select-none"
                 >
-                  <input
-                    id="remember"
-                    name="remember"
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-gray-300 text-[#8bc34a] focus:ring-[#8bc34a]"
-                  />
+                  <Checkbox id="remember" name="remember" />
                   <span>Remember Me</span>
                 </label>
               </div>
 
               <div className="pt-2">
-                <button
+                <Button
                   type="submit"
+                  variant="flat-primary"
                   disabled={isPending}
-                  className="btn-flat-primary"
+                  className="w-full gap-2"
                 >
-                  {isPending ? 'Logging in...' : 'LOGIN'}
-                </button>
+                  {isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>LOGGING IN...</span>
+                    </>
+                  ) : (
+                    <span>LOGIN</span>
+                  )}
+                </Button>
               </div>
             </form>
           </div>

@@ -235,7 +235,7 @@ export async function authenticateLdapUser(
       err.name === 'TimeoutError' ||
       err.message?.includes('timeout')
     ) {
-      throw new Error('Whoops! LDAP server cannot be reached.');
+      throw new Error('Unable to Login. Please contact support.');
     }
 
     throw new Error(err.message || 'Authentication error occurred.');
