@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { DB } from '@/lib/db';
 import { prisma } from '@/lib/prisma';
+import { testRedisConnection } from '@/lib/redis';
 
 export async function GET() {
   const mysqlResult = await DB.testConnection();
@@ -25,13 +26,16 @@ export async function GET() {
     };
   }
 
-  const allConnected = mysqlResult.connected && prismaResult.connected;
+  const redisResult = await testRedisConnection();
+
+  const allConnected = mysqlResult.connected && prismaResult.connected && redisResult.connected;
 
   return NextResponse.json(
     {
-      status: allConnected ? 'success' : 'error',
+      status: allConnected ? 'success' : 'partial_failure',
       mysql: mysqlResult,
       prisma: prismaResult,
+      redis: redisResult,
     },
     { status: allConnected ? 200 : 500 }
   );
