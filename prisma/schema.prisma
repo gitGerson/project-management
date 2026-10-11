@@ -17,6 +17,8 @@ model User {
   name        String
   email       String   @unique
   phone       String?  @map("phone_number")
+  guid        String?  @unique
+  domain      String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

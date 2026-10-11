@@ -1,5 +1,6 @@
 import { userRepository } from '@/modules/auth/repositories/user.repository';
-import { hashPassword, verifyPassword } from '@/lib/auth';
+import { hashPassword } from '@/lib/auth';
+import { authenticateLdapUser } from '@/lib/ldap';
 import type { LoginInput, RegisterInput } from '@/modules/auth/schemas/auth.schema';
 import type { UserDTO } from '@/modules/auth/types';
 import type { User } from '@prisma/client';
@@ -11,24 +12,40 @@ function toUserDTO(user: User): UserDTO {
     name: user.name,
     email: user.email,
     phone: user.phone,
+    guid: user.guid,
+    domain: user.domain,
     createdAt: user.createdAt,
   };
 }
 
 export const authService = {
   /**
-   * Authenticate a user with username and password
+   * Authenticate a user with LDAP and synchronize with local database.
+   * Flow:
+   * 1. Authenticate against LDAP directory (no local password fallback).
+   * 2. If valid and not stored in DB yet, create user record in DB.
+   * 3. If valid and already stored, update/sync password and profile attributes.
    */
   async authenticate(input: LoginInput): Promise<UserDTO> {
-    const user = await userRepository.findByUsername(input.username);
-    if (!user) {
-      throw new Error('Invalid username or password');
-    }
+    // 1. Authenticate directly against LDAP
+    const ldapUser = await authenticateLdapUser({
+      username: input.username,
+      password: input.password,
+    });
 
-    const isValid = await verifyPassword(input.password, user.password);
-    if (!isValid) {
-      throw new Error('Invalid username or password');
-    }
+    // 2. Hash password to keep local hash synchronized
+    const hashedPassword = await hashPassword(input.password);
+
+    // 3. Sync or insert user record into our database
+    const user = await userRepository.syncLdapUser({
+      username: ldapUser.uid,
+      password: hashedPassword,
+      name: ldapUser.name,
+      email: ldapUser.email,
+      phone: ldapUser.phone,
+      guid: ldapUser.guid,
+      domain: ldapUser.domain,
+    });
 
     return toUserDTO(user);
   },

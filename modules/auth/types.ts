@@ -4,6 +4,8 @@ export interface UserDTO {
   name: string;
   email: string;
   phone: string | null;
+  guid?: string | null;
+  domain?: string | null;
   createdAt: Date;
 }
 
