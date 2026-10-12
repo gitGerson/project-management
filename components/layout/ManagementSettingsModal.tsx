@@ -16,14 +16,15 @@ import {
   Loader2,
   Trash2,
   ShieldCheck,
+  Pencil,
 } from 'lucide-react';
 import { listUsersAction } from '@/modules/users/actions';
 import { CustomSelect } from '@/components/ui/select';
+import { RoleModal } from './RoleModal';
 import {
   listRolesAction,
   listPermissionsAction,
   assignUserRolesAction,
-  createRoleAction,
   deleteRoleAction,
 } from '@/modules/rbac/actions';
 import type { UserListItemDTO } from '@/modules/users/types';
@@ -59,12 +60,9 @@ export function ManagementSettingsModal({
   const [permissions, setPermissions] = useState<PermissionDTO[]>([]);
   const [isLoadingRoles, setIsLoadingRoles] = useState(false);
 
-  // Create Role state
-  const [isCreatingRole, setIsCreatingRole] = useState(false);
-  const [newRoleName, setNewRoleName] = useState('');
-  const [newRoleDescription, setNewRoleDescription] = useState('');
-  const [selectedPermissionIds, setSelectedPermissionIds] = useState<number[]>([]);
-  const [isSubmittingRole, setIsSubmittingRole] = useState(false);
+  // Role Modal state (New Role & Edit Role)
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [roleToEdit, setRoleToEdit] = useState<RoleDTO | null>(null);
 
   // Feedback notifications
   const [feedbackMessage, setFeedbackMessage] = useState<{
@@ -206,34 +204,14 @@ export function ManagementSettingsModal({
     }
   };
 
-  // Create New Role
-  const handleCreateRole = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newRoleName.trim()) return;
+  const handleOpenCreateRole = () => {
+    setRoleToEdit(null);
+    setIsRoleModalOpen(true);
+  };
 
-    setIsSubmittingRole(true);
-    try {
-      const res = await createRoleAction({
-        name: newRoleName.trim(),
-        description: newRoleDescription.trim() || undefined,
-        permissionIds: selectedPermissionIds,
-      });
-
-      if (res.success) {
-        showFeedback('New role created successfully!');
-        setNewRoleName('');
-        setNewRoleDescription('');
-        setSelectedPermissionIds([]);
-        setIsCreatingRole(false);
-        fetchRolesAndPermissions();
-      } else {
-        showFeedback(res.message || 'Failed to create role', 'error');
-      }
-    } catch {
-      showFeedback('Error creating role', 'error');
-    } finally {
-      setIsSubmittingRole(false);
-    }
+  const handleOpenEditRole = (role: RoleDTO) => {
+    setRoleToEdit(role);
+    setIsRoleModalOpen(true);
   };
 
   // Delete Role
@@ -521,117 +499,13 @@ export function ManagementSettingsModal({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsCreatingRole((prev) => !prev)}
-                  className="px-3 py-1.5 bg-[#15803d] hover:bg-green-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                  onClick={handleOpenCreateRole}
+                  className="px-3.5 py-2 bg-[#15803d] hover:bg-green-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>{isCreatingRole ? 'Cancel' : 'New Role'}</span>
+                  <span>New Role</span>
                 </button>
               </div>
-
-              {/* Create Role Form Collapsible */}
-              {isCreatingRole && (
-                <form
-                  onSubmit={handleCreateRole}
-                  className="bg-gray-50/80 border border-gray-200 rounded-2xl p-4 sm:p-5 space-y-4 animate-in fade-in"
-                >
-                  <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                    Create New Role
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Role Name *
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. project_manager"
-                        value={newRoleName}
-                        onChange={(e) => setNewRoleName(e.target.value)}
-                        required
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Description
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Brief summary of duties"
-                        value={newRoleDescription}
-                        onChange={(e) => setNewRoleDescription(e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Permissions Checklist */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                      Grant Permissions
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                      {permissions.map((p) => {
-                        const checked = selectedPermissionIds.includes(p.id);
-                        return (
-                          <label
-                            key={p.id}
-                            className={`flex items-start gap-2 p-2 rounded-lg border text-xs cursor-pointer transition select-none ${
-                              checked
-                                ? 'bg-green-50/70 border-green-200 text-green-900'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedPermissionIds((prev) => [...prev, p.id]);
-                                } else {
-                                  setSelectedPermissionIds((prev) =>
-                                    prev.filter((id) => id !== p.id)
-                                  );
-                                }
-                              }}
-                              className="mt-0.5 rounded text-green-600 focus:ring-green-500"
-                            />
-                            <div>
-                              <div className="font-semibold">{p.name}</div>
-                              <div className="text-[10px] text-gray-400">{p.description}</div>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsCreatingRole(false)}
-                      className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-200 rounded-lg transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmittingRole}
-                      className="px-4 py-1.5 bg-[#15803d] hover:bg-green-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-60"
-                    >
-                      {isSubmittingRole ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        <span>Save Role</span>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              )}
 
               {/* Roles Table */}
               <div className="border border-gray-200 rounded-xl overflow-hidden shadow-2xs bg-white">
@@ -700,20 +574,31 @@ export function ManagementSettingsModal({
 
                             {/* Actions */}
                             <td className="px-4 py-3 text-right">
-                              {!isCoreRole ? (
+                              <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteRole(r.id, r.name)}
-                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
-                                  title="Delete role"
+                                  onClick={() => handleOpenEditRole(r)}
+                                  className="p-1.5 text-gray-500 hover:text-green-700 hover:bg-green-50 rounded-lg transition cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                                  title={`Edit role "${r.name}"`}
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">Edit</span>
                                 </button>
-                              ) : (
-                                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">
-                                  System Core
-                                </span>
-                              )}
+                                {!isCoreRole ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteRole(r.id, r.name)}
+                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                    title={`Delete role "${r.name}"`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider ml-1">
+                                    System Core
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -744,6 +629,18 @@ export function ManagementSettingsModal({
           </button>
         </div>
       </div>
+
+      {/* Role Create / Edit Dedicated Modal */}
+      <RoleModal
+        isOpen={isRoleModalOpen}
+        onClose={() => setIsRoleModalOpen(false)}
+        onSuccess={(msg) => {
+          showFeedback(msg);
+          fetchRolesAndPermissions();
+        }}
+        role={roleToEdit}
+        permissions={permissions}
+      />
     </div>,
     document.body
   );
