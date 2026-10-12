@@ -21,6 +21,7 @@ model User {
   guid        String?  @unique
   domain      String?
   userRoles   UserRole[]
+  boardMembers BoardMember[]
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -32,10 +33,32 @@ model Board {
   name        String   @db.VarChar(255)
   description String?  @db.Text
   image       String?  @db.VarChar(500)
+  members     BoardMember[]
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("boards")
+}
+
+enum BoardRole {
+  owner
+  member
+  monitor
+  guest
+}
+
+model BoardMember {
+  boardId   Int       @map("board_id")
+  userId    Int       @map("user_id")
+  role      BoardRole @default(member)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  board     Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([boardId, userId])
+  @@map("board_members")
 }
 
 model Role {

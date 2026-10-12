@@ -2,8 +2,18 @@ import { prisma } from '@/lib/prisma';
 import type { BoardDTO, CreateBoardInput, UpdateBoardInput } from '../types';
 
 export class BoardService {
-  async listBoards(): Promise<BoardDTO[]> {
+  async listBoards(userId?: number): Promise<BoardDTO[]> {
     const boards = await prisma.board.findMany({
+      where:
+        userId !== undefined
+          ? {
+              members: {
+                some: {
+                  userId,
+                },
+              },
+            }
+          : undefined,
       orderBy: {
         createdAt: 'desc',
       },
@@ -36,23 +46,35 @@ export class BoardService {
     };
   }
 
-  async createBoard(data: CreateBoardInput): Promise<BoardDTO> {
-    const board = await prisma.board.create({
-      data: {
-        name: data.name.trim(),
-        description: data.description?.trim() || null,
-        image: data.image || null,
-      },
-    });
+  async createBoard(data: CreateBoardInput, creatorUserId?: number): Promise<BoardDTO> {
+    return await prisma.$transaction(async (tx) => {
+      const board = await tx.board.create({
+        data: {
+          name: data.name.trim(),
+          description: data.description?.trim() || null,
+          image: data.image || null,
+        },
+      });
 
-    return {
-      id: board.id,
-      name: board.name,
-      description: board.description,
-      image: board.image,
-      createdAt: board.createdAt,
-      updatedAt: board.updatedAt,
-    };
+      if (creatorUserId) {
+        await tx.boardMember.create({
+          data: {
+            boardId: board.id,
+            userId: creatorUserId,
+            role: 'owner',
+          },
+        });
+      }
+
+      return {
+        id: board.id,
+        name: board.name,
+        description: board.description,
+        image: board.image,
+        createdAt: board.createdAt,
+        updatedAt: board.updatedAt,
+      };
+    });
   }
 
   async updateBoard(id: number, data: UpdateBoardInput): Promise<BoardDTO> {

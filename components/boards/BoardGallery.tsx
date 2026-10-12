@@ -119,6 +119,7 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
             onTogglePin={handleTogglePin}
             onOpen={handleOpenBoard}
             canView={canRead}
+            canEdit={canEdit}
           />
         ))}
 

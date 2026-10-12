@@ -22,15 +22,12 @@ export async function listBoardsAction(): Promise<ActionResponse<BoardDTO[]>> {
     return { success: false, message: 'Forbidden. You do not have permission to view boards.' };
   }
 
-  // Only users with BOARDS_VIEW_ALL can see all boards in the system.
-  // Users with only BOARDS_READ will only see assigned boards (future feature).
+  // If user has BOARDS_VIEW_ALL, they see all boards.
+  // Otherwise, they only see boards where they are an assigned member.
   const hasViewAll = await hasPermission(session.userId, PERMISSIONS.BOARDS_VIEW_ALL);
-  if (!hasViewAll) {
-    return { success: true, data: [] };
-  }
 
   try {
-    const boards = await boardService.listBoards();
+    const boards = await boardService.listBoards(hasViewAll ? undefined : session.userId);
     return { success: true, data: boards };
   } catch (error) {
     const err = error as Error;
@@ -59,7 +56,7 @@ export async function createBoardAction(data: CreateBoardInput): Promise<ActionR
   }
 
   try {
-    const board = await boardService.createBoard(parsed.data);
+    const board = await boardService.createBoard(parsed.data, session.userId);
     revalidatePath('/');
     return { success: true, message: 'Board created successfully', data: board };
   } catch (error) {

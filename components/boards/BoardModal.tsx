@@ -18,6 +18,7 @@ import { updateBoardAction, deleteBoardAction } from '@/modules/boards/actions';
 import { uploadFileDirectly } from '@/lib/upload-client';
 import type { BoardDTO } from '@/modules/boards/types';
 import type { BoardData } from './BoardCard';
+import { BoardMembersSection } from './BoardMembersSection';
 
 const emptySubscribe = () => () => {};
 
@@ -700,7 +701,12 @@ export function BoardModal({
             )}
           </div>
 
-          {/* 3. METADATA CARDS */}
+          {/* 3. BOARD MEMBERS SECTION */}
+          <div className="pt-2 border-t border-gray-100">
+            <BoardMembersSection boardId={board.id} canEdit={canEdit} />
+          </div>
+
+          {/* 4. METADATA CARDS */}
           <div className="pt-2 border-t border-gray-100">
             <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3">
               Board Information

@@ -343,7 +343,7 @@ export function CreateBoardModal({
               placeholder="e.g. Tong Tji Go Digital"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition"
+              className="w-full px-3.5 py-2 text-xs sm:text-sm text-gray-900 font-medium bg-white border border-gray-200 rounded-xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition"
             />
           </div>
 
@@ -357,7 +357,7 @@ export function CreateBoardModal({
               placeholder="Brief summary of duties, targets, or project scope"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition resize-none"
+              className="w-full px-3.5 py-2 text-xs sm:text-sm text-gray-900 font-medium bg-white border border-gray-200 rounded-xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition resize-none"
             />
           </div>
 

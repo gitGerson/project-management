@@ -14,7 +14,8 @@ const isValidClient =
   existingClient.role &&
   existingClient.permission &&
   existingClient.userRole &&
-  existingClient.rolePermission;
+  existingClient.rolePermission &&
+  existingClient.boardMember;
 
 export const prisma: PrismaClient =
   (isValidClient ? existingClient : undefined) ||

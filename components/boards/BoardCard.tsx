@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Pin, Eye } from 'lucide-react';
+import { Pin, Eye, Pencil } from 'lucide-react';
 
 export interface BoardData {
   id: number;
@@ -20,6 +20,7 @@ interface BoardCardProps {
   onTogglePin?: (id: number) => void;
   onOpen?: (board: BoardData) => void;
   canView?: boolean;
+  canEdit?: boolean;
 }
 
 export function BoardCard({
@@ -27,6 +28,7 @@ export function BoardCard({
   onTogglePin,
   onOpen,
   canView = true,
+  canEdit = false,
 }: BoardCardProps) {
   const [isPinned, setIsPinned] = useState(Boolean(board.isPinned));
 
@@ -160,16 +162,20 @@ export function BoardCard({
             />
           </button>
 
-          {/* View Details Eye Button - only if permitted to view boards */}
+          {/* Action Button: Edit icon if user can edit, Eye icon if view only */}
           {canView && (
             <button
               type="button"
               onClick={() => onOpen?.(board)}
               className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition active:scale-95 cursor-pointer"
-              title="View board details"
-              aria-label="View board details"
+              title={canEdit ? 'Edit board' : 'View board details'}
+              aria-label={canEdit ? 'Edit board' : 'View board details'}
             >
-              <Eye className="w-4 h-4" />
+              {canEdit ? (
+                <Pencil className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
             </button>
           )}
         </div>

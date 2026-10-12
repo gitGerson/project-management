@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth';
 import { getUserPermissions, getUserRoles } from '@/lib/access';
 import { authService } from '@/modules/auth/services/auth.service';
 import { boardService } from '@/modules/boards/services/board.service';
+import type { BoardDTO } from '@/modules/boards/types';
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import { Header } from '@/components/layout/Header';
 import { FloatingNavbar } from '@/components/layout/FloatingNavbar';
@@ -23,10 +24,18 @@ export default async function HomePage() {
     getUserRoles(session.userId),
   ]);
 
-  // Only users with BOARDS_VIEW_ALL can view all boards across the system.
-  // Users with only BOARDS_READ will only see assigned boards (future feature).
+  // If user has BOARDS_VIEW_ALL, view all boards across the system.
+  // If user has BOARDS_READ, only view boards where user is an assigned member.
   const hasViewAll = permissions.includes(PERMISSIONS.BOARDS_VIEW_ALL);
-  const boards = hasViewAll ? await boardService.listBoards() : [];
+  const canRead = permissions.includes(PERMISSIONS.BOARDS_READ) || hasViewAll;
+
+  let boards: BoardDTO[] = [];
+  if (hasViewAll) {
+    boards = await boardService.listBoards();
+  } else if (canRead) {
+    boards = await boardService.listBoards(session.userId);
+  }
+
   const userWithRoles = user ? { ...user, roles } : null;
 
   return (
