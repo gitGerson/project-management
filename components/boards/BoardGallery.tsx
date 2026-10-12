@@ -1,24 +1,120 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { Lock, Kanban } from 'lucide-react';
 import { BoardCard, type BoardData } from './BoardCard';
 import { CreateBoardCard } from './CreateBoardCard';
 import { CreateBoardModal } from './CreateBoardModal';
 import { BoardModal } from './BoardModal';
-import { deleteBoardAction } from '@/modules/boards/actions';
+import { deleteBoardAction, togglePinBoardAction } from '@/modules/boards/actions';
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import type { BoardDTO } from '@/modules/boards/types';
+
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 interface BoardGalleryProps {
   initialBoards: BoardDTO[];
   permissions?: string[];
 }
 
+function sortBoards(items: BoardData[]): BoardData[] {
+  return [...items].sort((a, b) => {
+    if (a.isPinned && b.isPinned) {
+      const timeA = a.pinnedAt ? new Date(a.pinnedAt).getTime() : 0;
+      const timeB = b.pinnedAt ? new Date(b.pinnedAt).getTime() : 0;
+      return timeB - timeA; // Recent pinned first (most left)
+    }
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return timeB - timeA;
+  });
+}
+
 export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) {
-  const [boards, setBoards] = useState<BoardData[]>(initialBoards);
+  const [boards, setBoards] = useState<BoardData[]>(() => sortBoards(initialBoards));
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<BoardData | null>(null);
+
+  // References for FLIP animation (First, Last, Invert, Play)
+  const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const prevRects = useRef<Map<number, DOMRect>>(new Map());
+
+  const snapshotCardRects = useCallback(() => {
+    const rects = new Map<number, DOMRect>();
+    cardRefs.current.forEach((el, id) => {
+      if (el) {
+        rects.set(id, el.getBoundingClientRect());
+      }
+    });
+    prevRects.current = rects;
+  }, []);
+
+  useIsomorphicLayoutEffect(() => {
+    if (prevRects.current.size === 0) return;
+
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      prevRects.current.clear();
+      return;
+    }
+
+    cardRefs.current.forEach((el, id) => {
+      if (!el) return;
+      const prev = prevRects.current.get(id);
+      if (!prev) return;
+
+      const current = el.getBoundingClientRect();
+      const deltaX = prev.left - current.left;
+      const deltaY = prev.top - current.top;
+
+      if (deltaX !== 0 || deltaY !== 0) {
+        el.style.zIndex = '10';
+        const anim = el.animate(
+          [
+            { transform: `translate(${deltaX}px, ${deltaY}px)` },
+            { transform: 'translate(0, 0)' },
+          ],
+          {
+            duration: 420,
+            easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)',
+          }
+        );
+        anim.onfinish = () => {
+          el.style.zIndex = '';
+        };
+      }
+    });
+
+    prevRects.current.clear();
+  }, [boards]);
+
+  const [prevInitialBoards, setPrevInitialBoards] = useState(initialBoards);
+  if (prevInitialBoards !== initialBoards) {
+    setPrevInitialBoards(initialBoards);
+    setBoards(sortBoards(initialBoards));
+  }
+
+  useEffect(() => {
+    const handleOpenBoardEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ boardId: number }>;
+      if (customEvent.detail?.boardId) {
+        const target = boards.find((b) => b.id === customEvent.detail.boardId);
+        if (target) {
+          setSelectedBoard(target);
+        }
+      }
+    };
+
+    window.addEventListener('open-board', handleOpenBoardEvent);
+    return () => {
+      window.removeEventListener('open-board', handleOpenBoardEvent);
+    };
+  }, [boards]);
 
   const canRead = permissions
     ? permissions.includes(PERMISSIONS.BOARDS_READ) || permissions.includes(PERMISSIONS.BOARDS_VIEW_ALL)
@@ -27,14 +123,71 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
   const canEdit = permissions ? permissions.includes(PERMISSIONS.BOARDS_UPDATE) : true;
   const canDelete = permissions ? permissions.includes(PERMISSIONS.BOARDS_DELETE) : true;
 
-  const handleTogglePin = (id: number) => {
-    setBoards((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, isPinned: !b.isPinned } : b))
+  const handleTogglePin = async (id: number) => {
+    const target = boards.find((b) => b.id === id);
+    if (!target) return;
+
+    // Check client-side limit if trying to pin
+    const currentlyPinnedCount = boards.filter((b) => b.isPinned).length;
+    if (!target.isPinned && currentlyPinnedCount >= 3) {
+      alert('You can only pin up to 3 boards. Please unpin a board first.');
+      return;
+    }
+
+    const wasPinned = Boolean(target.isPinned);
+    const wasPinnedAt = target.pinnedAt;
+    const nextPinned = !wasPinned;
+    const nextPinnedAt = nextPinned ? new Date() : null;
+
+    // Snapshot card rects for smooth FLIP animation
+    snapshotCardRects();
+
+    // Optimistically toggle and re-order so the recent pinned board is moved to the most left
+    setBoards((prev) => {
+      const updated = prev.map((b) =>
+        b.id === id ? { ...b, isPinned: nextPinned, pinnedAt: nextPinnedAt } : b
+      );
+      return sortBoards(updated);
+    });
+
+    setSelectedBoard((prev) =>
+      prev && prev.id === id ? { ...prev, isPinned: nextPinned, pinnedAt: nextPinnedAt } : prev
     );
+
+    try {
+      const res = await togglePinBoardAction(id);
+      if (!res.success) {
+        alert(res.message || 'Failed to update pin status');
+        // Rollback with animation
+        snapshotCardRects();
+        setBoards((prev) => {
+          const rolledBack = prev.map((b) =>
+            b.id === id ? { ...b, isPinned: wasPinned, pinnedAt: wasPinnedAt } : b
+          );
+          return sortBoards(rolledBack);
+        });
+        setSelectedBoard((prev) =>
+          prev && prev.id === id ? { ...prev, isPinned: wasPinned, pinnedAt: wasPinnedAt } : prev
+        );
+      }
+    } catch {
+      alert('Network error while toggling pin');
+      snapshotCardRects();
+      setBoards((prev) => {
+        const rolledBack = prev.map((b) =>
+          b.id === id ? { ...b, isPinned: wasPinned, pinnedAt: wasPinnedAt } : b
+        );
+        return sortBoards(rolledBack);
+      });
+      setSelectedBoard((prev) =>
+        prev && prev.id === id ? { ...prev, isPinned: wasPinned, pinnedAt: wasPinnedAt } : prev
+      );
+    }
   };
 
   const handleBoardCreated = (newBoard: BoardDTO) => {
-    setBoards((prev) => [newBoard, ...prev]);
+    snapshotCardRects();
+    setBoards((prev) => sortBoards([newBoard, ...prev]));
   };
 
   const handleDeleteBoard = async (id: number) => {
@@ -45,7 +198,8 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
       return;
     }
 
-    // Optimistic removal
+    // Optimistic removal with animation
+    snapshotCardRects();
     setBoards((prev) => prev.filter((b) => b.id !== id));
 
     try {
@@ -53,11 +207,13 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
       if (!res.success) {
         alert(res.message || 'Failed to delete board');
         // Rollback
-        setBoards((prev) => [...prev, target]);
+        snapshotCardRects();
+        setBoards((prev) => sortBoards([...prev, target]));
       }
     } catch {
       alert('Error deleting board');
-      setBoards((prev) => [...prev, target]);
+      snapshotCardRects();
+      setBoards((prev) => sortBoards([...prev, target]));
     }
   };
 
@@ -67,7 +223,7 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
 
   const handleBoardUpdated = (updated: BoardDTO) => {
     setBoards((prev) =>
-      prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b))
+      sortBoards(prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)))
     );
     setSelectedBoard((prev) =>
       prev && prev.id === updated.id ? { ...prev, ...updated } : prev
@@ -114,14 +270,25 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
         {boards.map((board) => {
           const isBoardEditable = canEdit || board.currentUserRole === 'owner' || Boolean(board.canEdit);
           return (
-            <BoardCard
+            <div
               key={board.id}
-              board={board}
-              onTogglePin={handleTogglePin}
-              onOpen={handleOpenBoard}
-              canView={canRead}
-              canEdit={isBoardEditable}
-            />
+              ref={(el) => {
+                if (el) {
+                  cardRefs.current.set(board.id, el);
+                } else {
+                  cardRefs.current.delete(board.id);
+                }
+              }}
+              className="will-change-transform"
+            >
+              <BoardCard
+                board={board}
+                onTogglePin={handleTogglePin}
+                onOpen={handleOpenBoard}
+                canView={canRead}
+                canEdit={isBoardEditable}
+              />
+            </div>
           );
         })}
 

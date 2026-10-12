@@ -22,6 +22,7 @@ model User {
   domain      String?
   userRoles   UserRole[]
   boardMembers BoardMember[]
+  pinnedBoards UserPinnedBoard[]
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -34,6 +35,7 @@ model Board {
   description String?  @db.Text
   image       String?  @db.VarChar(500)
   members     BoardMember[]
+  pinnedByUsers UserPinnedBoard[]
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -59,6 +61,18 @@ model BoardMember {
 
   @@id([boardId, userId])
   @@map("board_members")
+}
+
+model UserPinnedBoard {
+  userId    Int      @map("user_id")
+  boardId   Int      @map("board_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@id([userId, boardId])
+  @@map("user_pinned_boards")
 }
 
 model Role {

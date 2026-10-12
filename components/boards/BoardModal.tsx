@@ -13,6 +13,7 @@ import {
   Clock,
   Sparkles,
   AlertCircle,
+  Pin,
 } from 'lucide-react';
 import { updateBoardAction, deleteBoardAction } from '@/modules/boards/actions';
 import { uploadFileDirectly } from '@/lib/upload-client';
@@ -542,9 +543,10 @@ export function BoardModal({
           <div className="flex items-center justify-between gap-3 -mt-1">
             <div className="flex items-center gap-2">
               {/* Pin indicator */}
-              {'isPinned' in board && board.isPinned && (
+              {board && 'isPinned' in board && board.isPinned && (
                 <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200/70 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                  Pinned Board
+                  <Pin className="w-3 h-3 fill-amber-500 text-amber-500" />
+                  <span>Pinned Board</span>
                 </span>
               )}
             </div>

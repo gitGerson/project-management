@@ -6,22 +6,17 @@ import { Kanban, Pin, ChevronUp, Settings } from 'lucide-react';
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import { ManagementSettingsModal } from './ManagementSettingsModal';
 
-interface PinnedBoardItem {
+export interface PinnedBoardItem {
   id: number;
   name: string;
-  href: string;
 }
-
-const DEFAULT_PINNED_BOARDS: PinnedBoardItem[] = [
-  { id: 1, name: 'Tong Tji Go Digital', href: '#' },
-  { id: 2, name: 'IT Operational', href: '#' },
-];
 
 interface FloatingNavbarProps {
   permissions?: string[];
+  pinnedBoards?: PinnedBoardItem[];
 }
 
-export function FloatingNavbar({ permissions = [] }: FloatingNavbarProps) {
+export function FloatingNavbar({ permissions = [], pinnedBoards = [] }: FloatingNavbarProps) {
   const [isPinnedOpen, setIsPinnedOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const pinnedMenuRef = useRef<HTMLDivElement>(null);
@@ -52,6 +47,13 @@ export function FloatingNavbar({ permissions = [] }: FloatingNavbarProps) {
     };
   }, [isPinnedOpen]);
 
+  const handleSelectPinned = (boardId: number) => {
+    setIsPinnedOpen(false);
+    window.dispatchEvent(
+      new CustomEvent('open-board', { detail: { boardId } })
+    );
+  };
+
   return (
     <nav
       className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 select-none"
@@ -76,8 +78,13 @@ export function FloatingNavbar({ permissions = [] }: FloatingNavbarProps) {
             aria-expanded={isPinnedOpen}
             aria-haspopup="true"
           >
-            <Pin className="w-4 h-4 text-gray-500" />
+            <Pin className={`w-4 h-4 ${pinnedBoards.length > 0 ? 'text-amber-500 fill-amber-500' : 'text-gray-500'}`} />
             <span>Pinned Board</span>
+            {pinnedBoards.length > 0 && (
+              <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                {pinnedBoards.length}
+              </span>
+            )}
             <ChevronUp
               className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
                 isPinnedOpen ? 'rotate-180' : ''
@@ -88,24 +95,31 @@ export function FloatingNavbar({ permissions = [] }: FloatingNavbarProps) {
           {/* Dropup Menu */}
           {isPinnedOpen && (
             <div
-              className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 min-w-[220px] bg-white border border-gray-200/90 shadow-2xl rounded-xl py-2 z-50 text-gray-800 text-xs sm:text-sm animate-in fade-in slide-in-from-bottom-2 duration-150"
+              className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 min-w-[220px] max-w-[280px] bg-white border border-gray-200/90 shadow-2xl rounded-xl py-2 z-50 text-gray-800 text-xs sm:text-sm animate-in fade-in slide-in-from-bottom-2 duration-150"
               role="menu"
             >
-              <div className="px-3 py-1 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                Pinned Boards
+              <div className="px-3 py-1 flex items-center justify-between text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                <span>Pinned Boards</span>
+                <span className="text-[10px] font-semibold text-gray-400">{pinnedBoards.length}/3</span>
               </div>
-              {DEFAULT_PINNED_BOARDS.map((board) => (
-                <Link
-                  key={board.id}
-                  href={board.href}
-                  onClick={() => setIsPinnedOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 text-gray-700 transition"
-                  role="menuitem"
-                >
-                  <Pin className="w-3.5 h-3.5 fill-amber-500 text-amber-500 flex-shrink-0" />
-                  <span className="truncate">{board.name}</span>
-                </Link>
-              ))}
+              {pinnedBoards.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-gray-400">
+                  No pinned boards yet
+                </div>
+              ) : (
+                pinnedBoards.map((board) => (
+                  <button
+                    key={board.id}
+                    type="button"
+                    onClick={() => handleSelectPinned(board.id)}
+                    className="w-full text-left flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 text-gray-700 transition cursor-pointer"
+                    role="menuitem"
+                  >
+                    <Pin className="w-3.5 h-3.5 fill-amber-500 text-amber-500 flex-shrink-0" />
+                    <span className="truncate">{board.name}</span>
+                  </button>
+                ))
+              )}
             </div>
           )}
         </div>

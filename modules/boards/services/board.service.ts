@@ -14,28 +14,43 @@ export class BoardService {
               },
             }
           : undefined,
-      include:
-        viewerUserId !== undefined
-          ? {
-              members: {
-                where: {
-                  userId: viewerUserId,
-                },
-                select: {
-                  role: true,
-                },
-              },
-            }
-          : undefined,
+      include: {
+        ...(viewerUserId !== undefined && {
+          members: {
+            where: {
+              userId: viewerUserId,
+            },
+            select: {
+              role: true,
+            },
+          },
+          pinnedByUsers: {
+            where: {
+              userId: viewerUserId,
+            },
+            select: {
+              userId: true,
+              createdAt: true,
+            },
+          },
+        }),
+      },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-    return boards.map((b) => {
-      const userRole = (b as unknown as { members?: Array<{ role: string }> }).members?.[0]?.role as
+    const mapped = boards.map((b) => {
+      const bObj = b as unknown as {
+        members?: Array<{ role: string }>;
+        pinnedByUsers?: Array<{ userId: number; createdAt: Date }>;
+      };
+      const userRole = bObj.members?.[0]?.role as
         | ('owner' | 'member' | 'monitor' | 'guest')
         | undefined;
+      const pinnedRecord = bObj.pinnedByUsers?.[0];
+      const isPinned = Boolean(pinnedRecord);
+      const pinnedAt = pinnedRecord ? pinnedRecord.createdAt : null;
 
       return {
         id: b.id,
@@ -44,35 +59,66 @@ export class BoardService {
         image: b.image,
         createdAt: b.createdAt,
         updatedAt: b.updatedAt,
+        isPinned,
+        pinnedAt,
         currentUserRole: userRole || null,
         canEdit: userRole === 'owner',
       };
     });
+
+    // Recent pinned board is auto moved into the most left. Other pinned is moved right.
+    mapped.sort((a, b) => {
+      if (a.isPinned && b.isPinned) {
+        const timeA = a.pinnedAt ? new Date(a.pinnedAt).getTime() : 0;
+        const timeB = b.pinnedAt ? new Date(b.pinnedAt).getTime() : 0;
+        return timeB - timeA; // Recent pinned first
+      }
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    return mapped;
   }
 
   async getBoardById(id: number, viewerUserId?: number): Promise<BoardDTO | null> {
     const board = await prisma.board.findUnique({
       where: { id },
-      include:
-        viewerUserId !== undefined
-          ? {
-              members: {
-                where: {
-                  userId: viewerUserId,
-                },
-                select: {
-                  role: true,
-                },
-              },
-            }
-          : undefined,
+      include: {
+        ...(viewerUserId !== undefined && {
+          members: {
+            where: {
+              userId: viewerUserId,
+            },
+            select: {
+              role: true,
+            },
+          },
+          pinnedByUsers: {
+            where: {
+              userId: viewerUserId,
+            },
+            select: {
+              userId: true,
+              createdAt: true,
+            },
+          },
+        }),
+      },
     });
 
     if (!board) return null;
 
-    const userRole = (board as unknown as { members?: Array<{ role: string }> }).members?.[0]?.role as
+    const bObj = board as unknown as {
+      members?: Array<{ role: string }>;
+      pinnedByUsers?: Array<{ userId: number; createdAt: Date }>;
+    };
+    const userRole = bObj.members?.[0]?.role as
       | ('owner' | 'member' | 'monitor' | 'guest')
       | undefined;
+    const pinnedRecord = bObj.pinnedByUsers?.[0];
+    const isPinned = Boolean(pinnedRecord);
+    const pinnedAt = pinnedRecord ? pinnedRecord.createdAt : null;
 
     return {
       id: board.id,
@@ -81,6 +127,8 @@ export class BoardService {
       image: board.image,
       createdAt: board.createdAt,
       updatedAt: board.updatedAt,
+      isPinned,
+      pinnedAt,
       currentUserRole: userRole || null,
       canEdit: userRole === 'owner',
     };
@@ -153,6 +201,74 @@ export class BoardService {
     });
 
     return true;
+  }
+
+  async getUserPinnedBoards(userId: number): Promise<Array<{ id: number; name: string }>> {
+    const pinned = await prisma.userPinnedBoard.findMany({
+      where: { userId },
+      include: {
+        board: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return pinned.map((p) => ({
+      id: p.board.id,
+      name: p.board.name,
+    }));
+  }
+
+  async togglePin(userId: number, boardId: number): Promise<{ isPinned: boolean }> {
+    const board = await prisma.board.findUnique({ where: { id: boardId } });
+    if (!board) {
+      throw new Error(`Board with ID ${boardId} not found`);
+    }
+
+    const existingPin = await prisma.userPinnedBoard.findUnique({
+      where: {
+        userId_boardId: {
+          userId,
+          boardId,
+        },
+      },
+    });
+
+    if (existingPin) {
+      await prisma.userPinnedBoard.delete({
+        where: {
+          userId_boardId: {
+            userId,
+            boardId,
+          },
+        },
+      });
+      return { isPinned: false };
+    }
+
+    // Check maximum limit of 3 pinned boards per user
+    const currentCount = await prisma.userPinnedBoard.count({
+      where: { userId },
+    });
+
+    if (currentCount >= 3) {
+      throw new Error('You can only pin up to 3 boards. Please unpin a board first.');
+    }
+
+    await prisma.userPinnedBoard.create({
+      data: {
+        userId,
+        boardId,
+      },
+    });
+
+    return { isPinned: true };
   }
 }
 

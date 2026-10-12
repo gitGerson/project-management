@@ -18,10 +18,11 @@ export default async function HomePage() {
     redirect('/login');
   }
 
-  const [user, permissions, roles] = await Promise.all([
+  const [user, permissions, roles, pinnedBoards] = await Promise.all([
     authService.getUserById(session.userId),
     getUserPermissions(session.userId),
     getUserRoles(session.userId),
+    boardService.getUserPinnedBoards(session.userId),
   ]);
 
   // If user has BOARDS_VIEW_ALL, view all boards across the system.
@@ -49,7 +50,7 @@ export default async function HomePage() {
       </main>
 
       {/* Center Floating Pill Navbar */}
-      <FloatingNavbar permissions={permissions} />
+      <FloatingNavbar permissions={permissions} pinnedBoards={pinnedBoards} />
     </div>
   );
 }

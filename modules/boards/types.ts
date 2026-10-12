@@ -6,6 +6,7 @@ export interface BoardDTO {
   createdAt: Date;
   updatedAt: Date;
   isPinned?: boolean;
+  pinnedAt?: Date | null;
   currentUserRole?: 'owner' | 'member' | 'monitor' | 'guest' | null;
   canEdit?: boolean;
 }

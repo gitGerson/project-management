@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Pin, Eye, Pencil } from 'lucide-react';
 
 export interface BoardData {
@@ -8,6 +8,9 @@ export interface BoardData {
   name: string;
   description?: string | null;
   isPinned?: boolean;
+  pinnedAt?: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
   image?: string | null;
   coverType?: 'go-digital' | 'it-operational' | 'empty' | 'custom';
   coverUrl?: string;
@@ -32,11 +35,10 @@ export function BoardCard({
   canView = true,
   canEdit = false,
 }: BoardCardProps) {
-  const [isPinned, setIsPinned] = useState(Boolean(board.isPinned));
+  const isPinned = Boolean(board.isPinned);
 
   const handlePinClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsPinned((prev) => !prev);
     onTogglePin?.(board.id);
   };
 

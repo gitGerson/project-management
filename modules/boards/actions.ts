@@ -125,3 +125,48 @@ export async function deleteBoardAction(id: number): Promise<ActionResponse<null
   }
 }
 
+export async function togglePinBoardAction(
+  boardId: number
+): Promise<ActionResponse<{ isPinned: boolean }>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  const hasViewAll = await hasPermission(session.userId, PERMISSIONS.BOARDS_VIEW_ALL);
+  const isMember = await boardMemberService.isBoardMember(boardId, session.userId);
+  if (!hasViewAll && !isMember) {
+    return { success: false, message: 'Forbidden. You do not have access to this board.' };
+  }
+
+  try {
+    const result = await boardService.togglePin(session.userId, boardId);
+    revalidatePath('/');
+    return {
+      success: true,
+      message: result.isPinned ? 'Board pinned successfully' : 'Board unpinned successfully',
+      data: result,
+    };
+  } catch (error) {
+    const err = error as Error;
+    return { success: false, message: err.message || 'Failed to update pin status' };
+  }
+}
+
+export async function getUserPinnedBoardsAction(): Promise<
+  ActionResponse<Array<{ id: number; name: string }>>
+> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  try {
+    const pinnedBoards = await boardService.getUserPinnedBoards(session.userId);
+    return { success: true, data: pinnedBoards };
+  } catch (error) {
+    const err = error as Error;
+    return { success: false, message: err.message || 'Failed to fetch pinned boards' };
+  }
+}
+
