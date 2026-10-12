@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { listUsersAction } from '@/modules/users/actions';
 import { CustomSelect } from '@/components/ui/select';
+import { AnimatedTabContent } from '@/components/ui/animated-tab-content';
 import { RoleModal } from './RoleModal';
 import {
   listRolesAction,
@@ -255,7 +256,7 @@ export function ManagementSettingsModal({
       {/* Modal Dialog Card */}
       <div
         ref={modalRef}
-        className={`relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 w-full max-w-4xl overflow-hidden z-10 flex flex-col max-h-[90vh] transition-all duration-200 ease-in-out motion-reduce:transition-none ${
+        className={`relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 w-full max-w-4xl overflow-hidden z-10 flex flex-col max-h-[90vh] transition-[transform,opacity] duration-200 ease-in-out motion-reduce:transition-none ${
           isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
       >
@@ -332,8 +333,10 @@ export function ManagementSettingsModal({
         )}
 
         {/* Modal Body */}
-        <div className="overflow-y-auto p-4 sm:p-6 flex-1">
-          {activeTab === 'users' ? (
+        <div className="overflow-y-auto flex-1">
+          <AnimatedTabContent activeKey={activeTab}>
+            <div className="p-4 sm:p-6">
+              {activeTab === 'users' ? (
             /* TAB 1: USERS TABLE */
             <div className="space-y-4">
               {/* Search & Actions Bar */}
@@ -598,6 +601,8 @@ export function ManagementSettingsModal({
               </div>
             </div>
           )}
+            </div>
+          </AnimatedTabContent>
         </div>
 
         {/* Modal Footer */}

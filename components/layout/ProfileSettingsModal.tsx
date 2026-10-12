@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { uploadFileDirectly } from '@/lib/upload-client';
 import { updateProfileAction } from '@/modules/auth/actions';
+import { AnimatedTabContent } from '@/components/ui/animated-tab-content';
 
 interface ProfileSettingsModalProps {
   user: {
@@ -235,7 +236,7 @@ export function ProfileSettingsModal({
       {/* Modal Dialog Card */}
       <div
         ref={modalRef}
-        className={`relative bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] z-10 transition-all duration-200 ease-in-out motion-reduce:transition-none motion-reduce:transform-none ${
+        className={`relative bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] z-10 transition-[transform,opacity] duration-200 ease-in-out motion-reduce:transition-none motion-reduce:transform-none ${
           isVisible
             ? 'opacity-100 scale-100 translate-y-0'
             : 'opacity-0 scale-95 translate-y-2'
@@ -293,8 +294,10 @@ export function ProfileSettingsModal({
         </div>
 
         {/* Modal Body */}
-        <div className="overflow-y-auto p-6 space-y-6 flex-1">
-          {activeTab === 'profile' ? (
+        <div className="overflow-y-auto flex-1">
+          <AnimatedTabContent activeKey={activeTab}>
+            <div className="p-6">
+              {activeTab === 'profile' ? (
             <div className="space-y-6">
               {/* Profile Picture Interaction */}
               <div className="bg-gray-50/80 rounded-2xl p-4 sm:p-5 border border-gray-100 flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -589,6 +592,8 @@ export function ProfileSettingsModal({
               </div>
             </div>
           )}
+            </div>
+          </AnimatedTabContent>
         </div>
 
         {/* Modal Footer */}
