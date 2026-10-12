@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
   User,
-  Plug,
+  Puzzle,
   Camera,
   Lock,
   Calendar,
@@ -22,7 +22,7 @@ interface ProfileSettingsModalProps {
   } | null;
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: 'profile' | 'integrations';
+  initialTab?: 'profile' | 'addon' | 'integrations';
 }
 
 export function ProfileSettingsModal({
@@ -31,9 +31,10 @@ export function ProfileSettingsModal({
   onClose,
   initialTab = 'profile',
 }: ProfileSettingsModalProps) {
+  const normalizedInitialTab = initialTab === 'integrations' ? 'addon' : initialTab;
   const [isVisible, setIsVisible] = useState(false);
-  const [prevInitialTab, setPrevInitialTab] = useState(initialTab);
-  const [activeTab, setActiveTab] = useState<'profile' | 'integrations'>(initialTab);
+  const [prevInitialTab, setPrevInitialTab] = useState(normalizedInitialTab);
+  const [activeTab, setActiveTab] = useState<'profile' | 'addon'>(normalizedInitialTab);
   const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
   const [fullName, setFullName] = useState(user?.name || 'GERSON MANUEL SUGIANTO');
@@ -41,9 +42,9 @@ export function ProfileSettingsModal({
   const [secondaryEmailSaved, setSecondaryEmailSaved] = useState(false);
 
   // Sync tab if initialTab changes while opening
-  if (initialTab !== prevInitialTab) {
-    setPrevInitialTab(initialTab);
-    setActiveTab(initialTab);
+  if (normalizedInitialTab !== prevInitialTab) {
+    setPrevInitialTab(normalizedInitialTab);
+    setActiveTab(normalizedInitialTab);
   }
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -158,7 +159,7 @@ export function ProfileSettingsModal({
                 Account Settings
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Manage your profile information and connected integrations
+                Manage your profile information and connected add-ons
               </p>
             </div>
             <button
@@ -188,15 +189,15 @@ export function ProfileSettingsModal({
 
             <button
               type="button"
-              onClick={() => setActiveTab('integrations')}
+              onClick={() => setActiveTab('addon')}
               className={`pb-3 text-xs sm:text-sm font-semibold flex items-center gap-2 border-b-2 transition cursor-pointer ${
-                activeTab === 'integrations'
+                activeTab === 'addon'
                   ? 'border-green-600 text-green-700'
                   : 'border-transparent text-gray-500 hover:text-gray-800'
               }`}
             >
-              <Plug className="w-4 h-4" />
-              <span>Integrations</span>
+              <Puzzle className="w-4 h-4" />
+              <span>Add-on</span>
             </button>
           </div>
         </div>
@@ -384,7 +385,7 @@ export function ProfileSettingsModal({
               <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-xs">
                 <div className="flex items-center gap-2 mb-1">
                   <Calendar className="w-4 h-4 text-green-700" />
-                  <h3 className="text-sm font-bold text-gray-900">Calendar Integrations</h3>
+                  <h3 className="text-sm font-bold text-gray-900">Calendar Add-ons</h3>
                 </div>
                 <p className="text-xs text-gray-500 mb-4">
                   Synchronize your board card deadlines, milestones, and meeting schedules.

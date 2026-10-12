@@ -20,7 +20,7 @@ interface HeaderProps {
 export function Header({ user }: HeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [profileModalTab, setProfileModalTab] = useState<'profile' | 'integrations'>('profile');
+  const [profileModalTab, setProfileModalTab] = useState<'profile' | 'addon'>('profile');
 
   // Compute initials (e.g. GM)
   const getInitials = (name?: string) => {
