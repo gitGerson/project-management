@@ -393,7 +393,7 @@ export function ProfileSettingsModal({
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition"
+                    className="w-full px-3.5 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition"
                     placeholder="Your full name"
                   />
                 </div>
@@ -562,7 +562,7 @@ export function ProfileSettingsModal({
                       value={secondaryEmail}
                       onChange={(e) => setSecondaryEmail(e.target.value)}
                       placeholder="e.g. personal@example.com"
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-white border border-gray-200 rounded-xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition"
                       required
                     />
                     <p className="text-[11px] sm:text-xs text-gray-500 mt-1.5">

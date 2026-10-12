@@ -239,7 +239,7 @@ export function RoleModal({
               placeholder="e.g. project_manager"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition"
+              className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition"
             />
             <p className="text-[11px] text-gray-400 mt-1">
               Use lowercase alphanumeric characters, hyphens, or underscores.
@@ -256,7 +256,7 @@ export function RoleModal({
               placeholder="Brief summary of duties and responsibilities"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition"
+              className="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-gray-200 rounded-xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition"
             />
           </div>
 
