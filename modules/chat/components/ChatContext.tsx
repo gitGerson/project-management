@@ -48,8 +48,8 @@ export function ChatProvider({ children }: ChatProviderProps) {
   return (
     <ChatContext.Provider value={value}>
       <div
-        className={`min-h-screen w-full transition-[margin] duration-300 ease-in-out ${
-          isChatOpen ? 'lg:mr-[400px] lg:w-[calc(100%-400px)]' : 'mr-0'
+        className={`min-h-screen w-full transition-[padding] duration-350 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] will-change-[padding] ${
+          isChatOpen ? 'lg:pr-[400px]' : 'lg:pr-0'
         }`}
       >
         {children}
@@ -57,4 +57,3 @@ export function ChatProvider({ children }: ChatProviderProps) {
     </ChatContext.Provider>
   );
 }
-

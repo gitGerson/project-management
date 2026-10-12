@@ -22,7 +22,11 @@ export function FloatingNavbar({ permissions = [] }: FloatingNavbarProps) {
   return (
     <>
       <nav
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 select-none"
+        className={`fixed bottom-6 z-40 select-none transition-transform duration-350 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${
+          isChatOpen
+            ? 'left-1/2 -translate-x-1/2 lg:-translate-x-[calc(50%+200px)]'
+            : 'left-1/2 -translate-x-1/2'
+        }`}
         aria-label="Quick navigation"
       >
         <div className="bg-white/95 backdrop-blur-md border border-gray-200/90 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-2xl p-1.5 flex items-center gap-1.5">

@@ -94,15 +94,15 @@ export const ChatDrawer: React.FC = () => {
       {/* Mobile backdrop only - on desktop content is pushed seamlessly */}
       <div
         onClick={closeChat}
-        className={`fixed inset-0 bg-black/15 backdrop-blur-2xs z-40 lg:hidden transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/15 backdrop-blur-2xs z-40 lg:hidden transition-opacity duration-350 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] ${
           isChatOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         aria-hidden="true"
       />
 
-      {/* Slide-over panel with smooth slide-in / slide-out animation */}
+      {/* Slide-over panel with smooth slide-in / slide-out animation matching tabbed modal */}
       <aside
-        className={`fixed top-0 right-0 bottom-0 w-full sm:w-[400px] h-screen z-50 bg-white border-l border-gray-200 shadow-[-4px_0_24px_rgba(0,0,0,0.06)] flex flex-col transition-transform duration-300 ease-in-out transform ${
+        className={`fixed top-0 right-0 bottom-0 w-full sm:w-[400px] h-screen z-50 bg-white border-l border-gray-200 shadow-[-4px_0_24px_rgba(0,0,0,0.06)] flex flex-col transition-transform duration-350 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] will-change-transform transform ${
           isChatOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         aria-label="Live Chat Panel"
