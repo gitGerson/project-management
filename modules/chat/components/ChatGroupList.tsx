@@ -139,7 +139,7 @@ export const ChatGroupList: React.FC<ChatGroupListProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-base font-bold text-gray-900 tracking-tight">
-              Live Chats
+              Board Chat
             </h2>
             <span
               className={`w-2 h-2 rounded-full ${
@@ -149,7 +149,7 @@ export const ChatGroupList: React.FC<ChatGroupListProps> = ({
             />
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
-            Group chats for your active boards
+            Group chats for your active projects
           </p>
         </div>
 

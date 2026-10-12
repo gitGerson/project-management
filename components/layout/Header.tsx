@@ -87,29 +87,29 @@ export function Header({ user, pinnedBoards = [] }: HeaderProps) {
 
         {/* Right: Actions & User Avatar */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Theme Toggle Button */}
+          {/* Theme Toggle Button - hidden on mobile, available in Profile Dropdown */}
           <button
             type="button"
-            className="w-9 h-9 rounded-full bg-gray-100/80 hover:bg-gray-200/80 text-gray-600 flex items-center justify-center transition active:scale-95 cursor-pointer"
+            className="hidden md:flex w-9 h-9 rounded-full bg-gray-100/80 hover:bg-gray-200/80 text-gray-600 items-center justify-center transition active:scale-95 cursor-pointer"
             aria-label="Toggle dark mode"
           >
             <Moon className="w-4 h-4" />
           </button>
 
-          {/* TreeView / Network Button */}
+          {/* TreeView / Network Button - hidden on mobile, available in Profile Dropdown */}
           <button
             type="button"
-            className="w-9 h-9 rounded-full bg-gray-100/80 hover:bg-gray-200/80 text-gray-600 flex items-center justify-center transition active:scale-95 cursor-pointer"
+            className="hidden md:flex w-9 h-9 rounded-full bg-gray-100/80 hover:bg-gray-200/80 text-gray-600 items-center justify-center transition active:scale-95 cursor-pointer"
             aria-label="Open TreeView"
           >
             <Network className="w-4 h-4" />
           </button>
 
-          {/* Full Screen Toggle Button */}
+          {/* Full Screen Toggle Button - hidden on mobile, available in Profile Dropdown */}
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="w-9 h-9 rounded-full bg-gray-100/80 hover:bg-gray-200/80 text-gray-600 flex items-center justify-center transition active:scale-95 cursor-pointer"
+            className="hidden md:flex w-9 h-9 rounded-full bg-gray-100/80 hover:bg-gray-200/80 text-gray-600 items-center justify-center transition active:scale-95 cursor-pointer"
             aria-label={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
             title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
           >
@@ -120,13 +120,15 @@ export function Header({ user, pinnedBoards = [] }: HeaderProps) {
             )}
           </button>
 
-          {/* Pinned Board Dropdown Button */}
-          <PinnedBoardDropdown pinnedBoards={pinnedBoards} />
+          {/* Pinned Board Dropdown Button - hidden on mobile, available in Profile Dropdown */}
+          <div className="hidden md:block">
+            <PinnedBoardDropdown pinnedBoards={pinnedBoards} />
+          </div>
 
-          {/* Inbox / Notification Button with Badge */}
+          {/* Inbox / Notification Button with Badge - hidden on mobile, available in Profile Dropdown */}
           <button
             type="button"
-            className="w-9 h-9 rounded-full bg-gray-100/80 hover:bg-gray-200/80 text-gray-600 flex items-center justify-center transition active:scale-95 relative cursor-pointer"
+            className="hidden md:flex w-9 h-9 rounded-full bg-gray-100/80 hover:bg-gray-200/80 text-gray-600 items-center justify-center transition active:scale-95 relative cursor-pointer"
             aria-label="Open notifications"
           >
             <Bell className="w-4 h-4" />
@@ -161,6 +163,9 @@ export function Header({ user, pinnedBoards = [] }: HeaderProps) {
               user={user}
               isOpen={isProfileOpen}
               onClose={() => setIsProfileOpen(false)}
+              pinnedBoards={pinnedBoards}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={toggleFullscreen}
               onOpenProfileSettings={() => {
                 setIsProfileOpen(false);
                 setProfileModalTab('profile');

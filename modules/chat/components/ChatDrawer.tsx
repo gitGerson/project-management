@@ -107,7 +107,7 @@ export const ChatDrawer: React.FC = () => {
             ? 'translate-x-0 pointer-events-auto'
             : 'translate-x-full pointer-events-none invisible'
         }`}
-        aria-label="Live Chat Panel"
+        aria-label="Board Chat Panel"
         aria-hidden={!isChatOpen}
       >
         {activeGroup ? (
