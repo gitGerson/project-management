@@ -14,6 +14,7 @@
     "ldap:test-sync": "node --env-file=.env.local scripts/test-ldap-sync.mjs",
     "redis:test": "node --env-file=.env.local scripts/test-redis.mjs",
     "s3:test": "node --env-file=.env.local scripts/test-s3.mjs",
+    "rbac:seed": "node --env-file=.env.local scripts/seed-rbac.mjs",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
