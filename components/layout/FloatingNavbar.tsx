@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Kanban, Pin, ChevronUp } from 'lucide-react';
+import { Kanban, Pin, ChevronUp, Settings } from 'lucide-react';
+import { ManagementSettingsModal } from './ManagementSettingsModal';
 
 interface PinnedBoardItem {
   id: number;
@@ -17,6 +18,7 @@ const DEFAULT_PINNED_BOARDS: PinnedBoardItem[] = [
 
 export function FloatingNavbar() {
   const [isPinnedOpen, setIsPinnedOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const pinnedMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -98,7 +100,26 @@ export function FloatingNavbar() {
             </div>
           )}
         </div>
+
+        {/* Settings Tab Button */}
+        <button
+          type="button"
+          onClick={() => setIsSettingsOpen(true)}
+          className={`text-gray-700 hover:bg-gray-100/80 text-xs sm:text-sm px-4 py-2 rounded-xl flex items-center gap-2 font-medium transition active:scale-95 cursor-pointer ${
+            isSettingsOpen ? 'bg-gray-100 font-semibold text-green-800' : ''
+          }`}
+          aria-label="Open management settings"
+        >
+          <Settings className="w-4 h-4 text-gray-500" />
+          <span>Settings</span>
+        </button>
       </div>
+
+      {/* Access Control & User Management Modal */}
+      <ManagementSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
     </nav>
   );
 }

@@ -6,7 +6,7 @@ import { hasPermission } from '@/lib/access';
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import { rbacService } from '@/modules/rbac/services/rbac.service';
 import { createRoleSchema, updateRoleSchema, assignUserRolesSchema } from '@/modules/rbac/schemas/rbac.schema';
-import type { ActionResponse, RoleDTO } from '@/modules/rbac/types';
+import type { ActionResponse, RoleDTO, PermissionDTO } from '@/modules/rbac/types';
 
 export async function createRoleAction(data: {
   name: string;
@@ -132,3 +132,34 @@ export async function assignUserRolesAction(
     return { success: false, message: err.message || 'Failed to assign roles' };
   }
 }
+
+export async function listRolesAction(): Promise<ActionResponse<RoleDTO[]>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  try {
+    const roles = await rbacService.listRoles();
+    return { success: true, data: roles };
+  } catch (error) {
+    const err = error as Error;
+    return { success: false, message: err.message || 'Failed to list roles' };
+  }
+}
+
+export async function listPermissionsAction(): Promise<ActionResponse<PermissionDTO[]>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  try {
+    const permissions = await rbacService.listPermissions();
+    return { success: true, data: permissions };
+  } catch (error) {
+    const err = error as Error;
+    return { success: false, message: err.message || 'Failed to list permissions' };
+  }
+}
+
