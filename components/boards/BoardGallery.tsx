@@ -33,6 +33,16 @@ function sortBoards(items: BoardData[]): BoardData[] {
   });
 }
 
+function dispatchPinnedBoards(boardList: BoardData[]) {
+  if (typeof window === 'undefined') return;
+  const pinnedItems = boardList
+    .filter((b) => b.isPinned)
+    .map((b) => ({ id: b.id, name: b.name }));
+  window.dispatchEvent(
+    new CustomEvent('pinned-boards-updated', { detail: { pinnedBoards: pinnedItems } })
+  );
+}
+
 export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) {
   const [boards, setBoards] = useState<BoardData[]>(() => sortBoards(initialBoards));
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -147,7 +157,9 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
       const updated = prev.map((b) =>
         b.id === id ? { ...b, isPinned: nextPinned, pinnedAt: nextPinnedAt } : b
       );
-      return sortBoards(updated);
+      const sorted = sortBoards(updated);
+      dispatchPinnedBoards(sorted);
+      return sorted;
     });
 
     setSelectedBoard((prev) =>
@@ -164,7 +176,9 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
           const rolledBack = prev.map((b) =>
             b.id === id ? { ...b, isPinned: wasPinned, pinnedAt: wasPinnedAt } : b
           );
-          return sortBoards(rolledBack);
+          const sorted = sortBoards(rolledBack);
+          dispatchPinnedBoards(sorted);
+          return sorted;
         });
         setSelectedBoard((prev) =>
           prev && prev.id === id ? { ...prev, isPinned: wasPinned, pinnedAt: wasPinnedAt } : prev
@@ -177,7 +191,9 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
         const rolledBack = prev.map((b) =>
           b.id === id ? { ...b, isPinned: wasPinned, pinnedAt: wasPinnedAt } : b
         );
-        return sortBoards(rolledBack);
+        const sorted = sortBoards(rolledBack);
+        dispatchPinnedBoards(sorted);
+        return sorted;
       });
       setSelectedBoard((prev) =>
         prev && prev.id === id ? { ...prev, isPinned: wasPinned, pinnedAt: wasPinnedAt } : prev
@@ -187,7 +203,11 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
 
   const handleBoardCreated = (newBoard: BoardDTO) => {
     snapshotCardRects();
-    setBoards((prev) => sortBoards([newBoard, ...prev]));
+    setBoards((prev) => {
+      const sorted = sortBoards([newBoard, ...prev]);
+      dispatchPinnedBoards(sorted);
+      return sorted;
+    });
   };
 
   const handleDeleteBoard = async (id: number) => {
@@ -200,7 +220,11 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
 
     // Optimistic removal with animation
     snapshotCardRects();
-    setBoards((prev) => prev.filter((b) => b.id !== id));
+    setBoards((prev) => {
+      const filtered = prev.filter((b) => b.id !== id);
+      dispatchPinnedBoards(filtered);
+      return filtered;
+    });
 
     try {
       const res = await deleteBoardAction(id);
@@ -208,12 +232,20 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
         alert(res.message || 'Failed to delete board');
         // Rollback
         snapshotCardRects();
-        setBoards((prev) => sortBoards([...prev, target]));
+        setBoards((prev) => {
+          const rolledBack = sortBoards([...prev, target]);
+          dispatchPinnedBoards(rolledBack);
+          return rolledBack;
+        });
       }
     } catch {
       alert('Error deleting board');
       snapshotCardRects();
-      setBoards((prev) => sortBoards([...prev, target]));
+      setBoards((prev) => {
+        const rolledBack = sortBoards([...prev, target]);
+        dispatchPinnedBoards(rolledBack);
+        return rolledBack;
+      });
     }
   };
 
@@ -222,9 +254,11 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
   };
 
   const handleBoardUpdated = (updated: BoardDTO) => {
-    setBoards((prev) =>
-      sortBoards(prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)))
-    );
+    setBoards((prev) => {
+      const sorted = sortBoards(prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
+      dispatchPinnedBoards(sorted);
+      return sorted;
+    });
     setSelectedBoard((prev) =>
       prev && prev.id === updated.id ? { ...prev, ...updated } : prev
     );

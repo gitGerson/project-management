@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Moon, Network, Bell } from 'lucide-react';
 import { ProfileDropdown } from './ProfileDropdown';
 import { ProfileSettingsModal } from './ProfileSettingsModal';
+import { PinnedBoardDropdown, type PinnedBoardItem } from './PinnedBoardDropdown';
 
 interface HeaderProps {
   user: {
@@ -17,9 +18,10 @@ interface HeaderProps {
     profilePicture?: string | null;
     roles?: string[];
   } | null;
+  pinnedBoards?: PinnedBoardItem[];
 }
 
-export function Header({ user }: HeaderProps) {
+export function Header({ user, pinnedBoards = [] }: HeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileModalTab, setProfileModalTab] = useState<'profile' | 'addon'>('profile');
@@ -78,6 +80,9 @@ export function Header({ user }: HeaderProps) {
           >
             <Network className="w-4 h-4" />
           </button>
+
+          {/* Pinned Board Dropdown Button (next to notification button) */}
+          <PinnedBoardDropdown pinnedBoards={pinnedBoards} />
 
           {/* Inbox / Notification Button with Badge */}
           <button

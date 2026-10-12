@@ -42,7 +42,7 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-[#f4f5fa] flex flex-col justify-between relative selection:bg-green-100 selection:text-green-800">
       {/* Top Floating Header */}
-      <Header user={userWithRoles} />
+      <Header user={userWithRoles} pinnedBoards={pinnedBoards} />
 
       {/* Main Board Gallery Content */}
       <main className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 pt-6 pb-24 flex-1">
@@ -50,7 +50,7 @@ export default async function HomePage() {
       </main>
 
       {/* Center Floating Pill Navbar */}
-      <FloatingNavbar permissions={permissions} pinnedBoards={pinnedBoards} />
+      <FloatingNavbar permissions={permissions} />
     </div>
   );
 }
