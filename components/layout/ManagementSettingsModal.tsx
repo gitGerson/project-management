@@ -18,6 +18,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { listUsersAction } from '@/modules/users/actions';
+import { CustomSelect } from '@/components/ui/select';
 import {
   listRolesAction,
   listPermissionsAction,
@@ -481,29 +482,21 @@ export function ManagementSettingsModal({
 
                               {/* Direct Role Selection */}
                               <td className="px-4 py-3">
-                                <div className="flex items-center gap-2">
-                                  <select
-                                    disabled={isUpdating}
+                                <div className="w-36 sm:w-44">
+                                  <CustomSelect
                                     value={currentRoleId}
-                                    onChange={(e) =>
-                                      handleRoleChange(u.id, parseInt(e.target.value, 10))
+                                    disabled={isUpdating}
+                                    isLoading={isUpdating}
+                                    placeholder="Select a role..."
+                                    options={roles.map((r) => ({
+                                      value: r.id,
+                                      label: r.name,
+                                      description: r.description || undefined,
+                                    }))}
+                                    onChange={(newVal) =>
+                                      handleRoleChange(u.id, Number(newVal))
                                     }
-                                    className="px-2.5 py-1.5 text-xs font-semibold bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition cursor-pointer disabled:opacity-50"
-                                  >
-                                    {currentRoleId === 0 && (
-                                      <option value={0} disabled>
-                                        Select a role...
-                                      </option>
-                                    )}
-                                    {roles.map((r) => (
-                                      <option key={r.id} value={r.id}>
-                                        {r.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  {isUpdating && (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-green-600" />
-                                  )}
+                                  />
                                 </div>
                               </td>
                             </tr>
