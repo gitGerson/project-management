@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   X,
   User,
@@ -13,6 +14,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { uploadFileDirectly } from '@/lib/upload-client';
+import { updateProfileAction } from '@/modules/auth/actions';
 
 interface ProfileSettingsModalProps {
   user: {
@@ -21,6 +23,7 @@ interface ProfileSettingsModalProps {
     username: string;
     email: string;
     phone?: string | null;
+    profilePicture?: string | null;
   } | null;
   isOpen: boolean;
   onClose: () => void;
@@ -33,17 +36,30 @@ export function ProfileSettingsModal({
   onClose,
   initialTab = 'profile',
 }: ProfileSettingsModalProps) {
+  const router = useRouter();
   const normalizedInitialTab = initialTab === 'integrations' ? 'addon' : initialTab;
   const [isVisible, setIsVisible] = useState(false);
   const [prevInitialTab, setPrevInitialTab] = useState(normalizedInitialTab);
   const [activeTab, setActiveTab] = useState<'profile' | 'addon'>(normalizedInitialTab);
-  const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
+  const [previewAvatar, setPreviewAvatar] = useState<string | null>(user?.profilePicture || null);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [fullName, setFullName] = useState(user?.name || 'GERSON MANUEL SUGIANTO');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [fullName, setFullName] = useState(user?.name || user?.username || '');
   const [secondaryEmail, setSecondaryEmail] = useState('');
   const [secondaryEmailSaved, setSecondaryEmailSaved] = useState(false);
+
+  // Sync state when modal opens or user updates
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) {
+      setPreviewAvatar(user?.profilePicture || null);
+      setFullName(user?.name || user?.username || '');
+      setAvatarMessage(null);
+    }
+  }
 
   // Sync tab if initialTab changes while opening
   if (normalizedInitialTab !== prevInitialTab) {
@@ -132,13 +148,64 @@ export function ProfileSettingsModal({
       });
       // Replace with permanent direct S3 public URL
       setPreviewAvatar(result.publicUrl);
-      setAvatarMessage('Avatar uploaded directly to S3!');
+
+      // Auto-save to user profile immediately in database
+      const saveRes = await updateProfileAction({
+        profilePicture: result.publicUrl,
+      });
+
+      if (saveRes.success) {
+        setAvatarMessage('Save successful!');
+        router.refresh();
+      } else {
+        setAvatarMessage(`Save failed: ${saveRes.message}`);
+      }
       setTimeout(() => setAvatarMessage(null), 4000);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Upload failed';
       setAvatarMessage(`Upload error: ${message}`);
     } finally {
       setUploadingAvatar(false);
+    }
+  };
+
+  const handleResetAvatar = async () => {
+    setPreviewAvatar(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    try {
+      const res = await updateProfileAction({
+        profilePicture: null,
+      });
+      if (res.success) {
+        setAvatarMessage('Profile photo removed.');
+        router.refresh();
+        setTimeout(() => setAvatarMessage(null), 3000);
+      }
+    } catch {
+      // Ignored
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      const res = await updateProfileAction({
+        name: fullName,
+        profilePicture: previewAvatar,
+      });
+
+      if (!res.success) {
+        setAvatarMessage(`Save failed: ${res.message}`);
+        return;
+      }
+
+      router.refresh();
+      handleDismiss();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Save failed';
+      setAvatarMessage(`Save error: ${msg}`);
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -258,7 +325,7 @@ export function ProfileSettingsModal({
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-semibold text-gray-900">Profile Photo</h4>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Upload a custom profile photo (PNG, JPG, or WEBP up to 5MB, uploaded directly to S3).
+                    Upload a custom profile photo (PNG, JPG, or WEBP up to 5MB).
                   </p>
 
                   <div className="mt-2.5 flex items-center gap-2">
@@ -291,10 +358,7 @@ export function ProfileSettingsModal({
                     {previewAvatar && !uploadingAvatar && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setPreviewAvatar(null);
-                          if (fileInputRef.current) fileInputRef.current.value = '';
-                        }}
+                        onClick={handleResetAvatar}
                         className="px-2.5 py-1.5 text-xs text-gray-500 hover:text-red-600 font-medium transition cursor-pointer"
                       >
                         Reset
@@ -347,7 +411,7 @@ export function ProfileSettingsModal({
                   <input
                     id="modal_username"
                     type="text"
-                    value={user?.username || 'gerson'}
+                    value={user?.username || ''}
                     disabled
                     className="w-full px-3.5 py-2 text-xs sm:text-sm bg-gray-100/80 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed select-none"
                   />
@@ -369,7 +433,7 @@ export function ProfileSettingsModal({
                   <input
                     id="modal_email"
                     type="email"
-                    value={user?.email || 'gerson@tongtji.com'}
+                    value={user?.email || ''}
                     disabled
                     className="w-full px-3.5 py-2 text-xs sm:text-sm bg-gray-100/80 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed select-none"
                   />
@@ -477,7 +541,7 @@ export function ProfileSettingsModal({
                   <input
                     id="modal_primary_email"
                     type="email"
-                    value={user?.email || 'gerson@tongtji.com'}
+                    value={user?.email || ''}
                     disabled
                     className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-gray-100/80 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed select-none"
                   />
@@ -539,10 +603,18 @@ export function ProfileSettingsModal({
           {activeTab === 'profile' && (
             <button
               type="button"
-              onClick={handleDismiss}
-              className="px-4 py-2 bg-[#15803d] hover:bg-green-800 text-white rounded-xl text-xs sm:text-sm font-medium transition cursor-pointer shadow-xs"
+              disabled={isSavingProfile || uploadingAvatar}
+              onClick={handleSaveProfile}
+              className="px-4 py-2 bg-[#15803d] hover:bg-green-800 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl text-xs sm:text-sm font-medium transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-98"
             >
-              Save Changes
+              {isSavingProfile ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
             </button>
           )}
         </div>

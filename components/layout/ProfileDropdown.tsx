@@ -10,6 +10,8 @@ interface ProfileDropdownProps {
     name: string;
     username: string;
     email: string;
+    phone?: string | null;
+    profilePicture?: string | null;
   } | null;
   isOpen: boolean;
   onClose: () => void;
@@ -58,7 +60,7 @@ export function ProfileDropdown({
     return (parts[0][0] + parts[1][0]).toUpperCase();
   };
 
-  const displayName = user?.name || 'GERSON MANUEL SUGIANTO';
+  const displayName = user?.name || user?.username || 'User';
   const initials = getInitials(displayName);
 
   return (
@@ -71,8 +73,17 @@ export function ProfileDropdown({
       {/* User Info Header */}
       <div className="px-4 py-2 flex items-center gap-3">
         <div className="relative flex-shrink-0">
-          <div className="w-10 h-10 rounded-full bg-[#364574] text-white flex items-center justify-center font-bold text-sm shadow-sm">
-            {initials}
+          <div className="w-10 h-10 rounded-full bg-[#364574] text-white flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden">
+            {user?.profilePicture ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={user.profilePicture}
+                alt={displayName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              initials
+            )}
           </div>
           <span
             className="w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white absolute bottom-0 right-0 shadow-xs"
@@ -84,7 +95,7 @@ export function ProfileDropdown({
             {displayName}
           </h4>
           <p className="text-[11px] text-gray-400 truncate">
-            {user?.email || 'gerson@tongtji.com'}
+            {user?.email || ''}
           </p>
           <div className="mt-1">
             <span className="inline-block bg-[#dcfce7] text-[#15803d] text-[10px] font-semibold px-2 py-0.5 rounded">

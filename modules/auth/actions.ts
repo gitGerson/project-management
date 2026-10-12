@@ -4,8 +4,13 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { loginSchema, registerSchema } from '@/modules/auth/schemas/auth.schema';
 import { authService } from '@/modules/auth/services/auth.service';
-import { createSessionToken, setSessionCookie, clearSessionCookie } from '@/lib/auth';
-import type { ActionResponse } from '@/modules/auth/types';
+import {
+  createSessionToken,
+  setSessionCookie,
+  clearSessionCookie,
+  getSession,
+} from '@/lib/auth';
+import type { ActionResponse, UserDTO } from '@/modules/auth/types';
 
 export async function loginAction(
   _prevState: ActionResponse | null,
@@ -89,4 +94,38 @@ export async function logoutAction(): Promise<void> {
   revalidatePath('/');
   redirect('/login');
 }
+
+export interface UpdateProfileInput {
+  name?: string;
+  profilePicture?: string | null;
+}
+
+export async function updateProfileAction(
+  input: UpdateProfileInput
+): Promise<ActionResponse<UserDTO>> {
+  const session = await getSession();
+  if (!session) {
+    return {
+      success: false,
+      message: 'Unauthorized. Please sign in.',
+    };
+  }
+
+  try {
+    const updated = await authService.updateProfile(session.userId, input);
+    revalidatePath('/');
+    return {
+      success: true,
+      message: 'Profile updated successfully',
+      data: updated,
+    };
+  } catch (error) {
+    const err = error as Error;
+    return {
+      success: false,
+      message: err.message || 'Failed to update profile.',
+    };
+  }
+}
+
 

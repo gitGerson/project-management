@@ -14,6 +14,7 @@ interface HeaderProps {
     username: string;
     email: string;
     phone?: string | null;
+    profilePicture?: string | null;
   } | null;
 }
 
@@ -30,7 +31,7 @@ export function Header({ user }: HeaderProps) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   };
 
-  const displayName = user?.name || 'GERSON MANUEL SUGIANTO';
+  const displayName = user?.name || user?.username || 'User';
   const initials = getInitials(displayName);
 
   return (
@@ -98,8 +99,17 @@ export function Header({ user }: HeaderProps) {
               aria-label="User menu"
               aria-expanded={isProfileOpen}
             >
-              <span>{initials}</span>
-              <span className="w-3 h-3 bg-green-500 rounded-full border-2 border-white absolute bottom-0 right-0 shadow-xs" />
+              {user?.profilePicture ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={user.profilePicture}
+                  alt={displayName}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                <span>{initials}</span>
+              )}
+              <span className="w-3 h-3 bg-green-500 rounded-full border-2 border-white absolute bottom-0 right-0 shadow-xs z-10" />
             </button>
 
             <ProfileDropdown

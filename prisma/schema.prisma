@@ -17,6 +17,7 @@ model User {
   name        String
   email       String   @unique
   phone       String?  @map("phone_number")
+  profilePicture String? @map("profile_picture") @db.VarChar(500)
   guid        String?  @unique
   domain      String?
   createdAt   DateTime @default(now()) @map("created_at")

@@ -12,6 +12,7 @@ function toUserDTO(user: User): UserDTO {
     name: user.name,
     email: user.email,
     phone: user.phone,
+    profilePicture: user.profilePicture,
     guid: user.guid,
     domain: user.domain,
     createdAt: user.createdAt,
@@ -87,6 +88,26 @@ export const authService = {
     const user = await userRepository.findById(id);
     if (!user) return null;
     return toUserDTO(user);
+  },
+
+  /**
+   * Update user profile information (name, profile picture)
+   */
+  async updateProfile(
+    userId: number,
+    input: { name?: string; profilePicture?: string | null }
+  ): Promise<UserDTO> {
+    const existing = await userRepository.findById(userId);
+    if (!existing) {
+      throw new Error('User not found');
+    }
+
+    const updated = await userRepository.updateUser(userId, {
+      name: input.name?.trim() || undefined,
+      profilePicture: input.profilePicture !== undefined ? input.profilePicture : undefined,
+    });
+
+    return toUserDTO(updated);
   },
 };
 

@@ -7,6 +7,7 @@ export interface CreateUserData {
   name: string;
   email: string;
   phone?: string | null;
+  profilePicture?: string | null;
   guid?: string | null;
   domain?: string | null;
 }
@@ -16,6 +17,7 @@ export interface UpdateUserData {
   name?: string;
   email?: string;
   phone?: string | null;
+  profilePicture?: string | null;
   guid?: string | null;
   domain?: string | null;
 }
@@ -53,6 +55,7 @@ export const userRepository = {
         name: data.name,
         email: data.email,
         phone: data.phone || null,
+        profilePicture: data.profilePicture || null,
         guid: data.guid || null,
         domain: data.domain || null,
       },
@@ -60,9 +63,15 @@ export const userRepository = {
   },
 
   async updateUser(id: number, data: UpdateUserData): Promise<User> {
+    const updatePayload: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        updatePayload[key] = value;
+      }
+    }
     return prisma.user.update({
       where: { id },
-      data,
+      data: updatePayload,
     });
   },
 
