@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth';
 import { hasPermission, hasAnyPermission } from '@/lib/access';
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import { boardService } from './services/board.service';
+import { boardMemberService } from '@/modules/board-members/services/board-member.service';
 import { createBoardSchema, updateBoardSchema } from './schemas/board.schema';
 import type { ActionResponse, BoardDTO, CreateBoardInput, UpdateBoardInput } from './types';
 
@@ -27,7 +28,10 @@ export async function listBoardsAction(): Promise<ActionResponse<BoardDTO[]>> {
   const hasViewAll = await hasPermission(session.userId, PERMISSIONS.BOARDS_VIEW_ALL);
 
   try {
-    const boards = await boardService.listBoards(hasViewAll ? undefined : session.userId);
+    const boards = await boardService.listBoards(
+      hasViewAll ? undefined : session.userId,
+      session.userId
+    );
     return { success: true, data: boards };
   } catch (error) {
     const err = error as Error;
@@ -74,9 +78,10 @@ export async function updateBoardAction(
     return { success: false, message: 'Unauthorized. Please sign in.' };
   }
 
-  const allowed = await hasPermission(session.userId, PERMISSIONS.BOARDS_UPDATE);
-  if (!allowed) {
-    return { success: false, message: 'Forbidden. You do not have permission to edit boards.' };
+  const hasGlobalUpdate = await hasPermission(session.userId, PERMISSIONS.BOARDS_UPDATE);
+  const isOwner = await boardMemberService.isBoardOwner(id, session.userId);
+  if (!hasGlobalUpdate && !isOwner) {
+    return { success: false, message: 'Forbidden. You do not have permission to edit this board.' };
   }
 
   const parsed = updateBoardSchema.safeParse(data);
@@ -104,9 +109,10 @@ export async function deleteBoardAction(id: number): Promise<ActionResponse<null
     return { success: false, message: 'Unauthorized. Please sign in.' };
   }
 
-  const allowed = await hasPermission(session.userId, PERMISSIONS.BOARDS_DELETE);
-  if (!allowed) {
-    return { success: false, message: 'Forbidden. You do not have permission to delete boards.' };
+  const hasGlobalDelete = await hasPermission(session.userId, PERMISSIONS.BOARDS_DELETE);
+  const isOwner = await boardMemberService.isBoardOwner(id, session.userId);
+  if (!hasGlobalDelete && !isOwner) {
+    return { success: false, message: 'Forbidden. You do not have permission to delete this board.' };
   }
 
   try {

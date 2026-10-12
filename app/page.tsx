@@ -31,9 +31,9 @@ export default async function HomePage() {
 
   let boards: BoardDTO[] = [];
   if (hasViewAll) {
-    boards = await boardService.listBoards();
+    boards = await boardService.listBoards(undefined, session.userId);
   } else if (canRead) {
-    boards = await boardService.listBoards(session.userId);
+    boards = await boardService.listBoards(session.userId, session.userId);
   }
 
   const userWithRoles = user ? { ...user, roles } : null;

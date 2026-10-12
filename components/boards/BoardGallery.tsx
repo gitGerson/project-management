@@ -111,17 +111,19 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {/* Render all existing board cards */}
-        {boards.map((board) => (
-          <BoardCard
-            key={board.id}
-            board={board}
-            onTogglePin={handleTogglePin}
-            onOpen={handleOpenBoard}
-            canView={canRead}
-            canEdit={canEdit}
-          />
-        ))}
+        {boards.map((board) => {
+          const isBoardEditable = canEdit || board.currentUserRole === 'owner' || Boolean(board.canEdit);
+          return (
+            <BoardCard
+              key={board.id}
+              board={board}
+              onTogglePin={handleTogglePin}
+              onOpen={handleOpenBoard}
+              canView={canRead}
+              canEdit={isBoardEditable}
+            />
+          );
+        })}
 
         {/* Create new board dashed card matching reference image - only if user has boards.create */}
         {canCreate && (
@@ -144,8 +146,8 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
           isOpen={Boolean(selectedBoard)}
           onClose={() => setSelectedBoard(null)}
           board={selectedBoard}
-          canEdit={canEdit}
-          canDelete={canDelete}
+          canEdit={canEdit || selectedBoard.currentUserRole === 'owner' || Boolean(selectedBoard.canEdit)}
+          canDelete={canDelete || selectedBoard.currentUserRole === 'owner'}
           onUpdate={handleBoardUpdated}
           onDelete={handleDeleteBoard}
         />

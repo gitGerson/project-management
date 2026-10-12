@@ -6,6 +6,8 @@ export interface BoardDTO {
   createdAt: Date;
   updatedAt: Date;
   isPinned?: boolean;
+  currentUserRole?: 'owner' | 'member' | 'monitor' | 'guest' | null;
+  canEdit?: boolean;
 }
 
 export interface CreateBoardInput {

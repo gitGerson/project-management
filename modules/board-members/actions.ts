@@ -53,12 +53,12 @@ export async function addBoardMemberAction(
     return { success: false, message: 'Unauthorized. Please sign in.' };
   }
 
-  // Access check: for now, users with BOARDS_UPDATE or BOARDS_CREATE can manage members
-  const allowed = await hasAnyPermission(session.userId, [
+  const hasGlobalManage = await hasAnyPermission(session.userId, [
     PERMISSIONS.BOARDS_UPDATE,
     PERMISSIONS.BOARDS_CREATE,
   ]);
-  if (!allowed) {
+  const isOwner = await boardMemberService.isBoardOwner(data.boardId, session.userId);
+  if (!hasGlobalManage && !isOwner) {
     return { success: false, message: 'Forbidden. You do not have permission to add members.' };
   }
 
@@ -89,8 +89,9 @@ export async function updateBoardMemberRoleAction(
     return { success: false, message: 'Unauthorized. Please sign in.' };
   }
 
-  const allowed = await hasPermission(session.userId, PERMISSIONS.BOARDS_UPDATE);
-  if (!allowed) {
+  const hasGlobalUpdate = await hasPermission(session.userId, PERMISSIONS.BOARDS_UPDATE);
+  const isOwner = await boardMemberService.isBoardOwner(data.boardId, session.userId);
+  if (!hasGlobalUpdate && !isOwner) {
     return { success: false, message: 'Forbidden. You do not have permission to update member roles.' };
   }
 
@@ -122,8 +123,9 @@ export async function removeBoardMemberAction(
     return { success: false, message: 'Unauthorized. Please sign in.' };
   }
 
-  const allowed = await hasPermission(session.userId, PERMISSIONS.BOARDS_UPDATE);
-  if (!allowed) {
+  const hasGlobalUpdate = await hasPermission(session.userId, PERMISSIONS.BOARDS_UPDATE);
+  const isOwner = await boardMemberService.isBoardOwner(boardId, session.userId);
+  if (!hasGlobalUpdate && !isOwner) {
     return { success: false, message: 'Forbidden. You do not have permission to remove members.' };
   }
 
@@ -180,8 +182,9 @@ export async function syncBoardMembersAction(
     return { success: false, message: 'Unauthorized. Please sign in.' };
   }
 
-  const allowed = await hasPermission(session.userId, PERMISSIONS.BOARDS_UPDATE);
-  if (!allowed) {
+  const hasGlobalUpdate = await hasPermission(session.userId, PERMISSIONS.BOARDS_UPDATE);
+  const isOwner = await boardMemberService.isBoardOwner(data.boardId, session.userId);
+  if (!hasGlobalUpdate && !isOwner) {
     return { success: false, message: 'Forbidden. You do not have permission to update board members.' };
   }
 

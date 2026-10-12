@@ -101,6 +101,22 @@ export class BoardMemberService {
     };
   }
 
+  async isBoardOwner(boardId: number, userId: number): Promise<boolean> {
+    const record = await prisma.boardMember.findUnique({
+      where: {
+        boardId_userId: {
+          boardId,
+          userId,
+        },
+      },
+      select: {
+        role: true,
+      },
+    });
+
+    return record?.role === 'owner';
+  }
+
   async addMember(data: AddBoardMemberInput): Promise<BoardMemberDTO> {
     const roleValue = (data.role || 'member') as BoardRole;
 

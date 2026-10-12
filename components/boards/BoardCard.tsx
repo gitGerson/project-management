@@ -13,6 +13,8 @@ export interface BoardData {
   coverUrl?: string;
   initials?: string;
   color?: string;
+  currentUserRole?: 'owner' | 'member' | 'monitor' | 'guest' | null;
+  canEdit?: boolean;
 }
 
 interface BoardCardProps {
