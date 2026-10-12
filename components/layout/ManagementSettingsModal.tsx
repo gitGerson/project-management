@@ -514,7 +514,7 @@ export function ManagementSettingsModal({
                     <tr>
                       <th className="px-4 py-3">Role</th>
                       <th className="px-4 py-3">Description</th>
-                      <th className="px-4 py-3">Permissions Preview</th>
+                      <th className="px-4 py-3">Permissions</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -537,6 +537,8 @@ export function ManagementSettingsModal({
                     ) : (
                       roles.map((r) => {
                         const isCoreRole = r.name === 'admin' || r.name === 'super_admin';
+                        const permCount = r.permissions?.length || 0;
+
                         return (
                           <tr key={r.id} className="hover:bg-gray-50/60 transition">
                             {/* Role Name */}
@@ -552,51 +554,38 @@ export function ManagementSettingsModal({
                               {r.description || 'No description provided'}
                             </td>
 
-                            {/* Permissions Preview */}
+                            {/* Permissions Count */}
                             <td className="px-4 py-3">
-                              <div className="flex flex-wrap gap-1 max-w-sm">
-                                {r.permissions && r.permissions.length > 0 ? (
-                                  r.permissions.map((p) => (
-                                    <span
-                                      key={p.id}
-                                      className="bg-gray-100 text-gray-700 text-[10px] font-medium px-1.5 py-0.5 rounded"
-                                    >
-                                      {p.name}
-                                    </span>
-                                  ))
-                                ) : (
-                                  <span className="text-gray-400 text-xs italic">
-                                    No permissions assigned
-                                  </span>
-                                )}
-                              </div>
+                              <span className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-lg">
+                                <Shield className="w-3 h-3 text-gray-400" />
+                                <span>
+                                  {permCount} {permCount === 1 ? 'permission' : 'permissions'}
+                                </span>
+                              </span>
                             </td>
 
-                            {/* Actions */}
+                            {/* Actions (Icon buttons only) */}
                             <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
+                              <div className="flex items-center justify-end gap-1">
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEditRole(r)}
-                                  className="p-1.5 text-gray-500 hover:text-green-700 hover:bg-green-50 rounded-lg transition cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                                  className="p-1.5 text-gray-400 hover:text-green-700 hover:bg-green-50 rounded-lg transition cursor-pointer"
                                   title={`Edit role "${r.name}"`}
+                                  aria-label={`Edit role ${r.name}`}
                                 >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">Edit</span>
+                                  <Pencil className="w-4 h-4" />
                                 </button>
-                                {!isCoreRole ? (
+                                {!isCoreRole && (
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteRole(r.id, r.name)}
                                     className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
                                     title={`Delete role "${r.name}"`}
+                                    aria-label={`Delete role ${r.name}`}
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
-                                ) : (
-                                  <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider ml-1">
-                                    System Core
-                                  </span>
                                 )}
                               </div>
                             </td>
