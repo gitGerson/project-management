@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Moon, Network, Bell } from 'lucide-react';
+import { Moon, Network, Bell, Maximize, Minimize } from 'lucide-react';
 import { ProfileDropdown } from './ProfileDropdown';
 import { ProfileSettingsModal } from './ProfileSettingsModal';
 import { PinnedBoardDropdown, type PinnedBoardItem } from './PinnedBoardDropdown';
@@ -25,6 +25,30 @@ export function Header({ user, pinnedBoards = [] }: HeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileModalTab, setProfileModalTab] = useState<'profile' | 'addon'>('profile');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error('Fullscreen toggle error:', err);
+    }
+  };
 
   // Compute initials (e.g. GM)
   const getInitials = (name?: string) => {
@@ -81,7 +105,22 @@ export function Header({ user, pinnedBoards = [] }: HeaderProps) {
             <Network className="w-4 h-4" />
           </button>
 
-          {/* Pinned Board Dropdown Button (next to notification button) */}
+          {/* Full Screen Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="w-9 h-9 rounded-full bg-gray-100/80 hover:bg-gray-200/80 text-gray-600 flex items-center justify-center transition active:scale-95 cursor-pointer"
+            aria-label={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
+            title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
+          >
+            {isFullscreen ? (
+              <Minimize className="w-4 h-4" />
+            ) : (
+              <Maximize className="w-4 h-4" />
+            )}
+          </button>
+
+          {/* Pinned Board Dropdown Button */}
           <PinnedBoardDropdown pinnedBoards={pinnedBoards} />
 
           {/* Inbox / Notification Button with Badge */}

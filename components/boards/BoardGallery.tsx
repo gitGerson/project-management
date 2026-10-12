@@ -48,6 +48,16 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState<BoardData | null>(null);
 
+  // Sync pinned boards to PinnedBoardDropdown whenever boards state changes (after render)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    dispatchPinnedBoards(boards);
+  }, [boards]);
+
   // References for FLIP animation (First, Last, Invert, Play)
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const prevRects = useRef<Map<number, DOMRect>>(new Map());
@@ -103,11 +113,9 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
     prevRects.current.clear();
   }, [boards]);
 
-  const [prevInitialBoards, setPrevInitialBoards] = useState(initialBoards);
-  if (prevInitialBoards !== initialBoards) {
-    setPrevInitialBoards(initialBoards);
+  useEffect(() => {
     setBoards(sortBoards(initialBoards));
-  }
+  }, [initialBoards]);
 
   useEffect(() => {
     const handleOpenBoardEvent = (e: Event) => {
@@ -157,9 +165,7 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
       const updated = prev.map((b) =>
         b.id === id ? { ...b, isPinned: nextPinned, pinnedAt: nextPinnedAt } : b
       );
-      const sorted = sortBoards(updated);
-      dispatchPinnedBoards(sorted);
-      return sorted;
+      return sortBoards(updated);
     });
 
     setSelectedBoard((prev) =>
@@ -176,9 +182,7 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
           const rolledBack = prev.map((b) =>
             b.id === id ? { ...b, isPinned: wasPinned, pinnedAt: wasPinnedAt } : b
           );
-          const sorted = sortBoards(rolledBack);
-          dispatchPinnedBoards(sorted);
-          return sorted;
+          return sortBoards(rolledBack);
         });
         setSelectedBoard((prev) =>
           prev && prev.id === id ? { ...prev, isPinned: wasPinned, pinnedAt: wasPinnedAt } : prev
@@ -191,9 +195,7 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
         const rolledBack = prev.map((b) =>
           b.id === id ? { ...b, isPinned: wasPinned, pinnedAt: wasPinnedAt } : b
         );
-        const sorted = sortBoards(rolledBack);
-        dispatchPinnedBoards(sorted);
-        return sorted;
+        return sortBoards(rolledBack);
       });
       setSelectedBoard((prev) =>
         prev && prev.id === id ? { ...prev, isPinned: wasPinned, pinnedAt: wasPinnedAt } : prev
@@ -203,11 +205,7 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
 
   const handleBoardCreated = (newBoard: BoardDTO) => {
     snapshotCardRects();
-    setBoards((prev) => {
-      const sorted = sortBoards([newBoard, ...prev]);
-      dispatchPinnedBoards(sorted);
-      return sorted;
-    });
+    setBoards((prev) => sortBoards([newBoard, ...prev]));
   };
 
   const handleDeleteBoard = async (id: number) => {
@@ -220,11 +218,7 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
 
     // Optimistic removal with animation
     snapshotCardRects();
-    setBoards((prev) => {
-      const filtered = prev.filter((b) => b.id !== id);
-      dispatchPinnedBoards(filtered);
-      return filtered;
-    });
+    setBoards((prev) => prev.filter((b) => b.id !== id));
 
     try {
       const res = await deleteBoardAction(id);
@@ -232,20 +226,12 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
         alert(res.message || 'Failed to delete board');
         // Rollback
         snapshotCardRects();
-        setBoards((prev) => {
-          const rolledBack = sortBoards([...prev, target]);
-          dispatchPinnedBoards(rolledBack);
-          return rolledBack;
-        });
+        setBoards((prev) => sortBoards([...prev, target]));
       }
     } catch {
       alert('Error deleting board');
       snapshotCardRects();
-      setBoards((prev) => {
-        const rolledBack = sortBoards([...prev, target]);
-        dispatchPinnedBoards(rolledBack);
-        return rolledBack;
-      });
+      setBoards((prev) => sortBoards([...prev, target]));
     }
   };
 
@@ -254,11 +240,9 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
   };
 
   const handleBoardUpdated = (updated: BoardDTO) => {
-    setBoards((prev) => {
-      const sorted = sortBoards(prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
-      dispatchPinnedBoards(sorted);
-      return sorted;
-    });
+    setBoards((prev) =>
+      sortBoards(prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)))
+    );
     setSelectedBoard((prev) =>
       prev && prev.id === updated.id ? { ...prev, ...updated } : prev
     );

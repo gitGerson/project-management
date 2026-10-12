@@ -3,7 +3,14 @@ import { hasPermission } from '@/lib/access';
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import { boardMemberService } from '@/modules/board-members/services/board-member.service';
 import { publishCommentEvent } from './realtime-publisher';
-import type { ChatGroupDTO, CommentDTO, SendCommentInput, ScopeType } from '../types';
+import { parseCommentContent, serializeCommentContent, stripHtml } from '../utils/comment-parser';
+import type {
+  ChatGroupDTO,
+  CommentDTO,
+  SendCommentInput,
+  ScopeType,
+  MentionUserDTO,
+} from '../types';
 
 export function normalizeScopeType(type: string): ScopeType {
   const lower = type.toLowerCase().trim();
@@ -122,6 +129,19 @@ export class CommentService {
 
       const groupUpdatedAt = last ? last.createdAt.toISOString() : board.updatedAt.toISOString();
 
+      let lastCommentSnippet = '';
+      if (last) {
+        const parsed = parseCommentContent(last.content);
+        const textOnly = stripHtml(parsed.cleanContent);
+        if (textOnly) {
+          lastCommentSnippet = textOnly;
+        } else if (parsed.attachments.length > 0) {
+          lastCommentSnippet = parsed.attachments[0].isImage ? '[Gambar]' : '[Lampiran]';
+        } else {
+          lastCommentSnippet = 'Pesan';
+        }
+      }
+
       groups.push({
         id: `board:${board.id}`,
         scopeType: 'board',
@@ -131,7 +151,7 @@ export class CommentService {
         image: board.image,
         lastComment: last
           ? {
-              content: last.content,
+              content: lastCommentSnippet,
               authorName: last.user?.name || 'User',
               createdAt: last.createdAt.toISOString(),
             }
@@ -190,22 +210,28 @@ export class CommentService {
       take: limit,
     });
 
-    return comments.map((c) => ({
-      id: c.id,
-      commentableType: canonicalScope,
-      commentableId: c.commentableId,
-      userId: c.userId,
-      author: {
-        id: c.user.id,
-        name: c.user.name,
-        username: c.user.username,
-        profilePicture: c.user.profilePicture,
-        initials: getInitials(c.user.name),
-      },
-      content: c.content,
-      createdAt: c.createdAt.toISOString(),
-      updatedAt: c.updatedAt.toISOString(),
-    }));
+    return comments.map((c) => {
+      const parsed = parseCommentContent(c.content);
+      return {
+        id: c.id,
+        commentableType: canonicalScope,
+        commentableId: c.commentableId,
+        userId: c.userId,
+        author: {
+          id: c.user.id,
+          name: c.user.name,
+          username: c.user.username,
+          profilePicture: c.user.profilePicture,
+          initials: getInitials(c.user.name),
+        },
+        content: parsed.cleanContent,
+        rawContent: c.content,
+        replyTo: parsed.replyTo,
+        attachments: parsed.attachments,
+        createdAt: c.createdAt.toISOString(),
+        updatedAt: c.updatedAt.toISOString(),
+      };
+    });
   }
 
   /**
@@ -223,17 +249,25 @@ export class CommentService {
       }
     }
 
-    const trimmed = input.content.trim();
-    if (!trimmed) {
-      throw new Error('Message content cannot be empty.');
+    const rawText = input.content ? input.content.trim() : '';
+    const hasAttachments = Boolean(input.attachments && input.attachments.length > 0);
+
+    if (!rawText && !hasAttachments) {
+      throw new Error('Message content or attachment cannot be empty.');
     }
+
+    const serializedContent = serializeCommentContent({
+      content: rawText,
+      replyTo: input.replyTo,
+      attachments: input.attachments,
+    });
 
     const comment = await prisma.comment.create({
       data: {
         commentableType: canonicalScope,
         commentableId: input.commentableId,
         userId,
-        content: trimmed,
+        content: serializedContent,
       },
       include: {
         user: {
@@ -267,6 +301,8 @@ export class CommentService {
       },
     });
 
+    const parsed = parseCommentContent(comment.content);
+
     const dto: CommentDTO = {
       id: comment.id,
       commentableType: canonicalScope,
@@ -279,7 +315,10 @@ export class CommentService {
         profilePicture: comment.user.profilePicture,
         initials: getInitials(comment.user.name),
       },
-      content: comment.content,
+      content: parsed.cleanContent,
+      rawContent: comment.content,
+      replyTo: parsed.replyTo,
+      attachments: parsed.attachments,
       createdAt: comment.createdAt.toISOString(),
       updatedAt: comment.updatedAt.toISOString(),
       tempId: input.tempId,
@@ -289,6 +328,57 @@ export class CommentService {
     await publishCommentEvent(canonicalScope, input.commentableId, dto);
 
     return dto;
+  }
+
+  /**
+   * List users that can be mentioned in the given chat scope
+   */
+  async listMentionCandidates(scopeType: string, scopeId: number): Promise<MentionUserDTO[]> {
+    const canonicalScope = normalizeScopeType(scopeType);
+
+    if (canonicalScope === 'board') {
+      const members = await prisma.boardMember.findMany({
+        where: { boardId: scopeId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              profilePicture: true,
+            },
+          },
+        },
+      });
+
+      return members.map((m) => ({
+        id: m.user.id,
+        name: m.user.name,
+        username: m.user.username,
+        profilePicture: m.user.profilePicture,
+        initials: getInitials(m.user.name),
+      }));
+    }
+
+    // Default: fetch active users
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        profilePicture: true,
+      },
+      take: 50,
+      orderBy: { name: 'asc' },
+    });
+
+    return users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      username: u.username,
+      profilePicture: u.profilePicture,
+      initials: getInitials(u.name),
+    }));
   }
 
   /**
@@ -319,4 +409,3 @@ export class CommentService {
 }
 
 export const commentService = new CommentService();
-

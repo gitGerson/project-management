@@ -49,7 +49,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     <ChatContext.Provider value={value}>
       <div
         className={`min-h-screen w-full transition-[padding] duration-350 [transition-timing-function:cubic-bezier(0.4,0,0.2,1)] will-change-[padding] ${
-          isChatOpen ? 'lg:pr-[400px]' : 'lg:pr-0'
+          isChatOpen ? 'lg:pr-[460px]' : 'lg:pr-0'
         }`}
       >
         {children}

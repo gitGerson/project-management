@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import Image from 'next/image';
 import type { ChatGroupDTO } from '../types';
+import { stripHtml } from '../utils/comment-parser';
 import { Search, Layout, MessageSquare, X } from 'lucide-react';
 
 interface ChatGroupListProps {
@@ -11,6 +13,89 @@ interface ChatGroupListProps {
   onClose: () => void;
   isConnected?: boolean;
 }
+
+const ChatGroupRow: React.FC<{
+  group: ChatGroupDTO;
+  onSelect: (group: ChatGroupDTO) => void;
+  formatTimestamp: (dateString?: string | null) => string;
+}> = ({ group, onSelect, formatTimestamp }) => {
+  const [imgError, setImgError] = useState(false);
+  const hasUnread = group.unreadCount > 0;
+  const cleanSnippet = group.lastComment ? stripHtml(group.lastComment.content) : '';
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(group)}
+      className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors hover:bg-gray-50 cursor-pointer ${
+        hasUnread ? 'bg-emerald-50/25' : 'bg-white'
+      }`}
+    >
+      {/* Avatar / Icon with image support and fallback */}
+      <div className="relative shrink-0">
+        {group.image && !imgError ? (
+          <Image
+            src={group.image}
+            alt={group.title}
+            width={44}
+            height={44}
+            unoptimized
+            onError={() => setImgError(true)}
+            className="w-11 h-11 rounded-xl object-cover border border-gray-200"
+          />
+        ) : (
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[#15803d] font-semibold text-sm">
+            <Layout className="w-5 h-5 text-[#15803d]" />
+          </div>
+        )}
+        {hasUnread && (
+          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
+        )}
+      </div>
+
+      {/* Details */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <h4
+            className={`text-sm truncate ${
+              hasUnread ? 'font-bold text-gray-900' : 'font-medium text-gray-800'
+            }`}
+          >
+            {group.title}
+          </h4>
+          <span className="text-[10px] text-gray-400 shrink-0 ml-2">
+            {formatTimestamp(group.lastComment?.createdAt)}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <p
+            className={`text-xs truncate max-w-[220px] ${
+              hasUnread ? 'text-gray-900 font-semibold' : 'text-gray-500'
+            }`}
+          >
+            {group.lastComment ? (
+              <>
+                <span className="text-[#15803d] font-medium">
+                  {group.lastComment.authorName}:
+                </span>{' '}
+                {cleanSnippet || '[Pesan]'}
+              </>
+            ) : (
+              <span className="italic text-gray-400">No messages yet</span>
+            )}
+          </p>
+
+          {hasUnread && (
+            <span className="shrink-0 px-1.5 py-0.2 min-w-[18px] text-center text-[10px] font-bold text-white bg-emerald-600 rounded-full shadow-xs">
+              {group.unreadCount > 99 ? '99+' : group.unreadCount}
+            </span>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+};
 
 export const ChatGroupList: React.FC<ChatGroupListProps> = ({
   groups,
@@ -28,7 +113,7 @@ export const ChatGroupList: React.FC<ChatGroupListProps> = ({
       (g) =>
         g.title.toLowerCase().includes(q) ||
         (g.subtitle && g.subtitle.toLowerCase().includes(q)) ||
-        (g.lastComment && g.lastComment.content.toLowerCase().includes(q))
+        (g.lastComment && stripHtml(g.lastComment.content).toLowerCase().includes(q))
     );
   }, [groups, searchQuery]);
 
@@ -122,74 +207,14 @@ export const ChatGroupList: React.FC<ChatGroupListProps> = ({
             </p>
           </div>
         ) : (
-          filteredGroups.map((group) => {
-            const hasUnread = group.unreadCount > 0;
-            return (
-              <button
-                key={`${group.scopeType}:${group.scopeId}`}
-                type="button"
-                onClick={() => onSelectGroup(group)}
-                className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors hover:bg-gray-50 cursor-pointer ${
-                  hasUnread ? 'bg-emerald-50/25' : 'bg-white'
-                }`}
-              >
-                {/* Avatar / Icon */}
-                <div className="relative shrink-0">
-                  <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[#15803d] font-semibold text-sm">
-                    <Layout className="w-5 h-5 text-[#15803d]" />
-                  </div>
-                  {hasUnread && (
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
-                  )}
-                </div>
-
-                {/* Details */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h4
-                      className={`text-sm truncate ${
-                        hasUnread
-                          ? 'font-bold text-gray-900'
-                          : 'font-medium text-gray-800'
-                      }`}
-                    >
-                      {group.title}
-                    </h4>
-                    <span className="text-[10px] text-gray-400 shrink-0 ml-2">
-                      {formatTimestamp(group.lastComment?.createdAt)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <p
-                      className={`text-xs truncate max-w-[210px] ${
-                        hasUnread
-                          ? 'text-gray-900 font-semibold'
-                          : 'text-gray-500'
-                      }`}
-                    >
-                      {group.lastComment ? (
-                        <>
-                          <span className="text-[#15803d] font-medium">
-                            {group.lastComment.authorName}:
-                          </span>{' '}
-                          {group.lastComment.content}
-                        </>
-                      ) : (
-                        <span className="italic text-gray-400">No messages yet</span>
-                      )}
-                    </p>
-
-                    {hasUnread && (
-                      <span className="shrink-0 px-1.5 py-0.2 min-w-[18px] text-center text-[10px] font-bold text-white bg-emerald-600 rounded-full shadow-xs">
-                        {group.unreadCount > 99 ? '99+' : group.unreadCount}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
-            );
-          })
+          filteredGroups.map((group) => (
+            <ChatGroupRow
+              key={`${group.scopeType}:${group.scopeId}`}
+              group={group}
+              onSelect={onSelectGroup}
+              formatTimestamp={formatTimestamp}
+            />
+          ))
         )}
       </div>
     </div>

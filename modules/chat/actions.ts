@@ -3,7 +3,13 @@
 import { getSession, createSessionToken } from '@/lib/auth';
 import { commentService } from './services/comment.service';
 import { sendCommentSchema } from './schemas/comment.schema';
-import type { ActionResponse, ChatGroupDTO, CommentDTO, SendCommentInput } from './types';
+import type {
+  ActionResponse,
+  ChatGroupDTO,
+  CommentDTO,
+  SendCommentInput,
+  MentionUserDTO,
+} from './types';
 
 export async function listUserChatGroupsAction(): Promise<ActionResponse<ChatGroupDTO[]>> {
   const session = await getSession();
@@ -68,6 +74,24 @@ export async function sendCommentAction(
   }
 }
 
+export async function listMentionCandidatesAction(
+  scopeType: string,
+  scopeId: number
+): Promise<ActionResponse<MentionUserDTO[]>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  try {
+    const candidates = await commentService.listMentionCandidates(scopeType, scopeId);
+    return { success: true, data: candidates };
+  } catch (error) {
+    const err = error as Error;
+    return { success: false, message: err.message || 'Failed to load mention candidates' };
+  }
+}
+
 export async function markChatAsReadAction(
   scopeType: string,
   scopeId: number
@@ -105,4 +129,3 @@ export async function getChatWsTokenAction(): Promise<ActionResponse<string>> {
   });
   return { success: true, data: token };
 }
-

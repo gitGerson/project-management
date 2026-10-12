@@ -1,8 +1,21 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import type { ChatGroupDTO, CommentDTO } from '../types';
-import { listCommentsAction, sendCommentAction, markChatAsReadAction } from '../actions';
+import Image from 'next/image';
+import type {
+  ChatGroupDTO,
+  CommentDTO,
+  CommentAttachmentDTO,
+  CommentReplyDTO,
+  MentionUserDTO,
+} from '../types';
+import { stripHtml } from '../utils/comment-parser';
+import {
+  listCommentsAction,
+  sendCommentAction,
+  markChatAsReadAction,
+  listMentionCandidatesAction,
+} from '../actions';
 import { useRealtimeChat } from '../hooks/useRealtimeChat';
 import { ChatMessageItem } from './ChatMessageItem';
 import { ChatInput } from './ChatInput';
@@ -28,6 +41,9 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
   const [comments, setComments] = useState<CommentDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<CommentReplyDTO | null>(null);
+  const [mentionCandidates, setMentionCandidates] = useState<MentionUserDTO[]>([]);
+  const [headerImgError, setHeaderImgError] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -77,10 +93,11 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
     onCommentReceived: handleCommentReceived,
   });
 
-  // Fetch initial comments
+  // Fetch initial comments and mention candidates
   useEffect(() => {
     let isMounted = true;
 
+    // Load comments
     listCommentsAction(group.scopeType, group.scopeId)
       .then((res) => {
         if (!isMounted) return;
@@ -103,13 +120,40 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
         if (isMounted) setLoading(false);
       });
 
+    // Load mention candidates (board members)
+    listMentionCandidatesAction(group.scopeType, group.scopeId)
+      .then((res) => {
+        if (isMounted && res.success && res.data) {
+          setMentionCandidates(res.data);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
   }, [group.scopeType, group.scopeId, onRefreshParentList, scrollToBottom]);
 
-  // Handle sending a message
-  const handleSendMessage = async (content: string) => {
+  // Handle clicking "Balas" on a comment
+  const handleReply = (comment: CommentDTO) => {
+    const strippedText = stripHtml(comment.content || '');
+    const rawSnippet =
+      strippedText || (comment.attachments?.[0]?.isImage ? 'Gambar' : 'Lampiran');
+    const snippet = rawSnippet.length > 70 ? `${rawSnippet.slice(0, 70)}...` : rawSnippet;
+
+    setReplyingTo({
+      id: comment.id,
+      authorName: comment.author.name || comment.author.username,
+      snippet,
+    });
+  };
+
+  // Handle sending a message with attachments and reply context
+  const handleSendMessage = async (payload: {
+    content: string;
+    replyTo?: CommentReplyDTO | null;
+    attachments?: CommentAttachmentDTO[];
+  }) => {
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     // Optimistic comment
@@ -119,7 +163,9 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
       commentableType: group.scopeType,
       commentableId: group.scopeId,
       userId: currentUserId,
-      content,
+      content: payload.content,
+      replyTo: payload.replyTo,
+      attachments: payload.attachments || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       author: {
@@ -133,12 +179,15 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
     };
 
     setComments((prev) => [...prev, optimisticComment]);
+    setReplyingTo(null);
     setTimeout(() => scrollToBottom(true), 50);
 
     const res = await sendCommentAction({
       commentableType: group.scopeType,
       commentableId: group.scopeId,
-      content,
+      content: payload.content,
+      replyTo: payload.replyTo,
+      attachments: payload.attachments,
       tempId,
     });
 
@@ -172,9 +221,21 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
             <ArrowLeft className="w-5 h-5" />
           </button>
 
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#15803d] flex items-center justify-center border border-emerald-100 shrink-0">
-            <Layout className="w-4 h-4 text-[#15803d]" />
-          </div>
+          {group.image && !headerImgError ? (
+            <Image
+              src={group.image}
+              alt={group.title}
+              width={36}
+              height={36}
+              unoptimized
+              onError={() => setHeaderImgError(true)}
+              className="w-9 h-9 rounded-xl object-cover border border-gray-200 shrink-0"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#15803d] flex items-center justify-center border border-emerald-100 shrink-0">
+              <Layout className="w-4 h-4 text-[#15803d]" />
+            </div>
+          )}
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -183,6 +244,9 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
               </h3>
               <span className="shrink-0 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-emerald-50 text-[#15803d] border border-emerald-100">
                 {group.scopeType}
+              </span>
+              <span className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                {comments.length}
               </span>
             </div>
             <p className="text-xs text-gray-500 truncate">
@@ -205,7 +269,7 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
       {/* Messages Stream */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-4 py-4 space-y-1 scrollbar-thin bg-[#f8fafc]"
+        className="flex-1 overflow-y-auto px-4 py-4 scrollbar-thin bg-[#f8fafc]"
       >
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2">
@@ -249,6 +313,7 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
               comment={comment}
               isMine={comment.userId === currentUserId}
               pending={Boolean(comment.isPending || (comment.tempId && comment.id < 0))}
+              onReply={handleReply}
             />
           ))
         )}
@@ -258,7 +323,9 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
       {/* Input */}
       <ChatInput
         onSendMessage={handleSendMessage}
-        placeholder={`Message ${group.title}...`}
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
+        mentionCandidates={mentionCandidates}
       />
     </div>
   );

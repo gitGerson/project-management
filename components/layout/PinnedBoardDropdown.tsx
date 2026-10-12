@@ -18,11 +18,9 @@ export function PinnedBoardDropdown({ pinnedBoards = [] }: PinnedBoardDropdownPr
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Sync with prop when server revalidates
-  const [prevPinnedBoards, setPrevPinnedBoards] = useState(pinnedBoards);
-  if (prevPinnedBoards !== pinnedBoards) {
-    setPrevPinnedBoards(pinnedBoards);
+  useEffect(() => {
     setItems(pinnedBoards);
-  }
+  }, [pinnedBoards]);
 
   // Listen to custom event for immediate optimistic updates from BoardGallery
   useEffect(() => {
