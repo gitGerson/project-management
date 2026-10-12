@@ -110,25 +110,34 @@ async function seed() {
     console.log(`   - Role "${role.name}" (${targetPermissionIds.length} permissions)`);
   }
 
-  // 4. Assign super_admin role to first user if exists
-  const firstUser = await prisma.user.findFirst({ orderBy: { id: 'asc' } });
-  if (firstUser) {
-    const superAdminRole = await prisma.role.findUnique({ where: { name: 'super_admin' } });
-    if (superAdminRole) {
+  // 4. Assign super_admin role to initial users (including 'admin')
+  const superAdminRole = await prisma.role.findUnique({ where: { name: 'super_admin' } });
+  if (superAdminRole) {
+    const initialUsers = await prisma.user.findMany({
+      where: {
+        OR: [
+          { id: 1 },
+          { username: 'admin' },
+          { username: 'gerson' },
+        ],
+      },
+    });
+
+    for (const u of initialUsers) {
       await prisma.userRole.upsert({
         where: {
           userId_roleId: {
-            userId: firstUser.id,
+            userId: u.id,
             roleId: superAdminRole.id,
           },
         },
         update: {},
         create: {
-          userId: firstUser.id,
+          userId: u.id,
           roleId: superAdminRole.id,
         },
       });
-      console.log(`\n3. Assigned "super_admin" role to user #${firstUser.id} (${firstUser.username})`);
+      console.log(`   - Assigned "super_admin" to user #${u.id} (${u.username})`);
     }
   }
 

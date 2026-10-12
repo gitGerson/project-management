@@ -6,8 +6,18 @@ declare global {
   var __prismaClient: PrismaClient | undefined;
 }
 
+// Invalidate stale in-memory client if schema has evolved during dev (e.g. missing newly added models)
+const existingClient = global.__prismaClient;
+const isValidClient =
+  existingClient?.user &&
+  existingClient.board &&
+  existingClient.role &&
+  existingClient.permission &&
+  existingClient.userRole &&
+  existingClient.rolePermission;
+
 export const prisma: PrismaClient =
-  global.__prismaClient ||
+  (isValidClient ? existingClient : undefined) ||
   new PrismaClient({
     datasources: {
       db: {

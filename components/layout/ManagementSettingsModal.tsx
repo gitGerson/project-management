@@ -109,9 +109,15 @@ export function ManagementSettingsModal({
 
       if (rolesRes.success && rolesRes.data) {
         setRoles(rolesRes.data);
+      } else if (!rolesRes.success) {
+        console.error('Failed to load roles:', rolesRes.message);
+        showFeedback(rolesRes.message || 'Failed to load roles', 'error');
       }
+
       if (permsRes.success && permsRes.data) {
         setPermissions(permsRes.data);
+      } else if (!permsRes.success) {
+        console.error('Failed to load permissions:', permsRes.message);
       }
     } catch {
       showFeedback('Failed to load roles and permissions', 'error');
@@ -145,16 +151,15 @@ export function ManagementSettingsModal({
     if (!isOpen) return;
 
     let isSubscribed = true;
-    const timer = setTimeout(() => {
+    void Promise.resolve().then(() => {
       if (isSubscribed) {
-        fetchUsers();
-        fetchRolesAndPermissions();
+        void fetchUsers();
+        void fetchRolesAndPermissions();
       }
-    }, 0);
+    });
 
     return () => {
       isSubscribed = false;
-      clearTimeout(timer);
     };
   }, [isOpen, fetchUsers, fetchRolesAndPermissions]);
 
@@ -415,7 +420,7 @@ export function ManagementSettingsModal({
                       ) : (
                         users.map((u) => {
                           const currentRole = roles.find((r) => u.roles.includes(r.name));
-                          const currentRoleId = currentRole?.id || (roles[0] ? roles[0].id : 1);
+                          const currentRoleId = currentRole ? currentRole.id : 0;
                           const isUpdating = updatingUserId === u.id;
 
                           return (
@@ -485,6 +490,11 @@ export function ManagementSettingsModal({
                                     }
                                     className="px-2.5 py-1.5 text-xs font-semibold bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 transition cursor-pointer disabled:opacity-50"
                                   >
+                                    {currentRoleId === 0 && (
+                                      <option value={0} disabled>
+                                        Select a role...
+                                      </option>
+                                    )}
                                     {roles.map((r) => (
                                       <option key={r.id} value={r.id}>
                                         {r.name}
