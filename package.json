@@ -17,6 +17,7 @@
     "redis:test": "node --env-file=.env.local scripts/test-redis.mjs",
     "s3:test": "node --env-file=.env.local scripts/test-s3.mjs",
     "rbac:seed": "node --env-file=.env.local scripts/seed-rbac.mjs",
+    "user:seed": "node --env-file=.env.local scripts/seed-users.mjs",
     "board:seed": "node --env-file=.env.local scripts/seed-boards.mjs",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",

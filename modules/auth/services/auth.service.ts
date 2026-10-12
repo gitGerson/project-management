@@ -1,5 +1,5 @@
 import { userRepository } from '@/modules/auth/repositories/user.repository';
-import { hashPassword } from '@/lib/auth';
+import { hashPassword, verifyPassword } from '@/lib/auth';
 import { authenticateLdapUser } from '@/lib/ldap';
 import type { LoginInput, RegisterInput } from '@/modules/auth/schemas/auth.schema';
 import type { UserDTO } from '@/modules/auth/types';
@@ -23,32 +23,46 @@ export const authService = {
   /**
    * Authenticate a user with LDAP and synchronize with local database.
    * Flow:
-   * 1. Authenticate against LDAP directory (no local password fallback).
+   * 1. Try to authenticate against LDAP directory.
    * 2. If valid and not stored in DB yet, create user record in DB.
-   * 3. If valid and already stored, update/sync password and profile attributes.
+   * 3. If LDAP fails or is unreachable, fallback to checking local database credentials.
    */
   async authenticate(input: LoginInput): Promise<UserDTO> {
-    // 1. Authenticate directly against LDAP
-    const ldapUser = await authenticateLdapUser({
-      username: input.username,
-      password: input.password,
-    });
+    // 1. Authenticate against LDAP if available
+    try {
+      const ldapUser = await authenticateLdapUser({
+        username: input.username,
+        password: input.password,
+      });
 
-    // 2. Hash password to keep local hash synchronized
-    const hashedPassword = await hashPassword(input.password);
+      // Hash password to keep local hash synchronized
+      const hashedPassword = await hashPassword(input.password);
 
-    // 3. Sync or insert user record into our database
-    const user = await userRepository.syncLdapUser({
-      username: ldapUser.uid,
-      password: hashedPassword,
-      name: ldapUser.name,
-      email: ldapUser.email,
-      phone: ldapUser.phone,
-      guid: ldapUser.guid,
-      domain: ldapUser.domain,
-    });
+      // Sync or insert user record into our database
+      const user = await userRepository.syncLdapUser({
+        username: ldapUser.uid,
+        password: hashedPassword,
+        name: ldapUser.name,
+        email: ldapUser.email,
+        phone: ldapUser.phone,
+        guid: ldapUser.guid,
+        domain: ldapUser.domain,
+      });
 
-    return toUserDTO(user);
+      return toUserDTO(user);
+    } catch (ldapErr) {
+      // If LDAP credentials failed or server is unreachable, check local user fallback
+      const localUser = await userRepository.findByUsername(input.username);
+      if (localUser && localUser.password) {
+        const isValid = await verifyPassword(input.password, localUser.password);
+        if (isValid) {
+          return toUserDTO(localUser);
+        }
+      }
+
+      // If neither worked, rethrow standard error
+      throw new Error('Invalid username or password');
+    }
   },
 
   /**
