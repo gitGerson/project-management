@@ -10,7 +10,9 @@ import {
   Calendar,
   Check,
   Upload,
+  Loader2,
 } from 'lucide-react';
+import { uploadFileDirectly } from '@/lib/upload-client';
 
 interface ProfileSettingsModalProps {
   user: {
@@ -37,6 +39,8 @@ export function ProfileSettingsModal({
   const [activeTab, setActiveTab] = useState<'profile' | 'addon'>(normalizedInitialTab);
   const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [fullName, setFullName] = useState(user?.name || 'GERSON MANUEL SUGIANTO');
   const [secondaryEmail, setSecondaryEmail] = useState('');
   const [secondaryEmailSaved, setSecondaryEmailSaved] = useState(false);
@@ -105,17 +109,36 @@ export function ProfileSettingsModal({
 
   const initials = getInitials(fullName);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        setAvatarMessage('File size must be under 2MB.');
-        return;
-      }
-      const previewUrl = URL.createObjectURL(file);
-      setPreviewAvatar(previewUrl);
-      setAvatarMessage('Preview updated! Integration hook ready for storage upload.');
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarMessage('File size must be under 5MB.');
+      return;
+    }
+
+    // Instant local preview
+    const localUrl = URL.createObjectURL(file);
+    setPreviewAvatar(localUrl);
+    setUploadingAvatar(true);
+    setUploadProgress(0);
+    setAvatarMessage(null);
+
+    try {
+      const result = await uploadFileDirectly(file, {
+        folder: 'avatars',
+        onProgress: (p) => setUploadProgress(p.percentage),
+      });
+      // Replace with permanent direct S3 public URL
+      setPreviewAvatar(result.publicUrl);
+      setAvatarMessage('Avatar uploaded directly to S3!');
       setTimeout(() => setAvatarMessage(null), 4000);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      setAvatarMessage(`Upload error: ${message}`);
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -235,7 +258,7 @@ export function ProfileSettingsModal({
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-semibold text-gray-900">Profile Photo</h4>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Upload a custom profile photo (PNG, JPG, or WEBP up to 2MB).
+                    Upload a custom profile photo (PNG, JPG, or WEBP up to 5MB, uploaded directly to S3).
                   </p>
 
                   <div className="mt-2.5 flex items-center gap-2">
@@ -245,16 +268,27 @@ export function ProfileSettingsModal({
                       accept="image/*"
                       onChange={handleAvatarChange}
                       className="hidden"
+                      disabled={uploadingAvatar}
                     />
                     <button
                       type="button"
+                      disabled={uploadingAvatar}
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1.5 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 text-xs font-medium rounded-lg shadow-2xs hover:bg-gray-50 transition flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 text-xs font-medium rounded-lg shadow-2xs hover:bg-gray-50 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <Upload className="w-3 h-3 text-gray-500" />
-                      <span>Change photo</span>
+                      {uploadingAvatar ? (
+                        <>
+                          <Loader2 className="w-3 h-3 text-green-700 animate-spin" />
+                          <span>Uploading {uploadProgress}%</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3 h-3 text-gray-500" />
+                          <span>Change photo</span>
+                        </>
+                      )}
                     </button>
-                    {previewAvatar && (
+                    {previewAvatar && !uploadingAvatar && (
                       <button
                         type="button"
                         onClick={() => {
@@ -269,7 +303,14 @@ export function ProfileSettingsModal({
                   </div>
 
                   {avatarMessage && (
-                    <p className="text-xs text-green-700 font-medium mt-2 animate-in fade-in">
+                    <p
+                      className={`text-xs font-medium mt-2 animate-in fade-in ${
+                        avatarMessage.toLowerCase().includes('failed') ||
+                        avatarMessage.toLowerCase().includes('error')
+                          ? 'text-red-600'
+                          : 'text-green-700'
+                      }`}
+                    >
                       {avatarMessage}
                     </p>
                   )}
