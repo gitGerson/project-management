@@ -5,15 +5,20 @@ import { BoardCard, type BoardData } from './BoardCard';
 import { CreateBoardCard } from './CreateBoardCard';
 import { CreateBoardModal } from './CreateBoardModal';
 import { deleteBoardAction } from '@/modules/boards/actions';
+import { PERMISSIONS } from '@/modules/rbac/constants';
 import type { BoardDTO } from '@/modules/boards/types';
 
 interface BoardGalleryProps {
   initialBoards: BoardDTO[];
+  permissions?: string[];
 }
 
-export function BoardGallery({ initialBoards }: BoardGalleryProps) {
+export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) {
   const [boards, setBoards] = useState<BoardData[]>(initialBoards);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const canCreate = permissions ? permissions.includes(PERMISSIONS.BOARDS_CREATE) : true;
+  const canDelete = permissions ? permissions.includes(PERMISSIONS.BOARDS_DELETE) : true;
 
   const handleTogglePin = (id: number) => {
     setBoards((prev) =>
@@ -58,20 +63,24 @@ export function BoardGallery({ initialBoards }: BoardGalleryProps) {
             key={board.id}
             board={board}
             onTogglePin={handleTogglePin}
-            onDelete={handleDeleteBoard}
+            onDelete={canDelete ? handleDeleteBoard : undefined}
           />
         ))}
 
-        {/* Create new board dashed card matching reference image */}
-        <CreateBoardCard onClick={() => setIsCreateModalOpen(true)} />
+        {/* Create new board dashed card matching reference image - only if user has boards.create */}
+        {canCreate && (
+          <CreateBoardCard onClick={() => setIsCreateModalOpen(true)} />
+        )}
       </div>
 
       {/* Dedicated Create Board Modal */}
-      <CreateBoardModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={handleBoardCreated}
-      />
+      {canCreate && (
+        <CreateBoardModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={handleBoardCreated}
+        />
+      )}
     </>
   );
 }

@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Kanban, Pin, ChevronUp, Settings } from 'lucide-react';
+import { PERMISSIONS } from '@/modules/rbac/constants';
 import { ManagementSettingsModal } from './ManagementSettingsModal';
 
 interface PinnedBoardItem {
@@ -16,10 +17,18 @@ const DEFAULT_PINNED_BOARDS: PinnedBoardItem[] = [
   { id: 2, name: 'IT Operational', href: '#' },
 ];
 
-export function FloatingNavbar() {
+interface FloatingNavbarProps {
+  permissions?: string[];
+}
+
+export function FloatingNavbar({ permissions = [] }: FloatingNavbarProps) {
   const [isPinnedOpen, setIsPinnedOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const pinnedMenuRef = useRef<HTMLDivElement>(null);
+
+  const canReadUsers = permissions.includes(PERMISSIONS.USERS_READ);
+  const canManageRoles = permissions.includes(PERMISSIONS.ROLES_MANAGE);
+  const canAccessSettings = canReadUsers || canManageRoles;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -101,25 +110,32 @@ export function FloatingNavbar() {
           )}
         </div>
 
-        {/* Settings Tab Button */}
-        <button
-          type="button"
-          onClick={() => setIsSettingsOpen(true)}
-          className={`text-gray-700 hover:bg-gray-100/80 text-xs sm:text-sm px-4 py-2 rounded-xl flex items-center gap-2 font-medium transition active:scale-95 cursor-pointer ${
-            isSettingsOpen ? 'bg-gray-100 font-semibold text-green-800' : ''
-          }`}
-          aria-label="Open management settings"
-        >
-          <Settings className="w-4 h-4 text-gray-500" />
-          <span>Settings</span>
-        </button>
+        {/* Settings Tab Button - Only rendered if user has permission to manage users or roles */}
+        {canAccessSettings && (
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            className={`text-gray-700 hover:bg-gray-100/80 text-xs sm:text-sm px-4 py-2 rounded-xl flex items-center gap-2 font-medium transition active:scale-95 cursor-pointer ${
+              isSettingsOpen ? 'bg-gray-100 font-semibold text-green-800' : ''
+            }`}
+            aria-label="Open management settings"
+          >
+            <Settings className="w-4 h-4 text-gray-500" />
+            <span>Settings</span>
+          </button>
+        )}
       </div>
 
       {/* Access Control & User Management Modal */}
-      <ManagementSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
+      {canAccessSettings && (
+        <ManagementSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          initialTab={canReadUsers ? 'users' : 'roles'}
+          canReadUsers={canReadUsers}
+          canManageRoles={canManageRoles}
+        />
+      )}
     </nav>
   );
 }

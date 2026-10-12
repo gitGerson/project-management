@@ -15,6 +15,7 @@ interface HeaderProps {
     email: string;
     phone?: string | null;
     profilePicture?: string | null;
+    roles?: string[];
   } | null;
 }
 

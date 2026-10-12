@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth';
+import { hasPermission } from '@/lib/access';
+import { PERMISSIONS } from '@/modules/rbac/constants';
 import { boardService } from './services/board.service';
 import { createBoardSchema, updateBoardSchema } from './schemas/board.schema';
 import type { ActionResponse, BoardDTO, CreateBoardInput, UpdateBoardInput } from './types';
@@ -10,6 +12,11 @@ export async function listBoardsAction(): Promise<ActionResponse<BoardDTO[]>> {
   const session = await getSession();
   if (!session) {
     return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  const allowed = await hasPermission(session.userId, PERMISSIONS.BOARDS_READ);
+  if (!allowed) {
+    return { success: false, message: 'Forbidden. You do not have permission to view boards.' };
   }
 
   try {
@@ -25,6 +32,11 @@ export async function createBoardAction(data: CreateBoardInput): Promise<ActionR
   const session = await getSession();
   if (!session) {
     return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  const allowed = await hasPermission(session.userId, PERMISSIONS.BOARDS_CREATE);
+  if (!allowed) {
+    return { success: false, message: 'Forbidden. You do not have permission to create boards.' };
   }
 
   const parsed = createBoardSchema.safeParse(data);
@@ -55,6 +67,11 @@ export async function updateBoardAction(
     return { success: false, message: 'Unauthorized. Please sign in.' };
   }
 
+  const allowed = await hasPermission(session.userId, PERMISSIONS.BOARDS_UPDATE);
+  if (!allowed) {
+    return { success: false, message: 'Forbidden. You do not have permission to edit boards.' };
+  }
+
   const parsed = updateBoardSchema.safeParse(data);
   if (!parsed.success) {
     return {
@@ -78,6 +95,11 @@ export async function deleteBoardAction(id: number): Promise<ActionResponse<null
   const session = await getSession();
   if (!session) {
     return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  const allowed = await hasPermission(session.userId, PERMISSIONS.BOARDS_DELETE);
+  if (!allowed) {
+    return { success: false, message: 'Forbidden. You do not have permission to delete boards.' };
   }
 
   try {

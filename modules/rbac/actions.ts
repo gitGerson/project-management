@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth';
-import { hasPermission } from '@/lib/access';
+import { hasPermission, hasAnyPermission } from '@/lib/access';
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import { rbacService } from '@/modules/rbac/services/rbac.service';
 import { createRoleSchema, updateRoleSchema, assignUserRolesSchema } from '@/modules/rbac/schemas/rbac.schema';
@@ -139,6 +139,15 @@ export async function listRolesAction(): Promise<ActionResponse<RoleDTO[]>> {
     return { success: false, message: 'Unauthorized. Please sign in.' };
   }
 
+  const allowed = await hasAnyPermission(session.userId, [
+    PERMISSIONS.ROLES_MANAGE,
+    PERMISSIONS.USERS_READ,
+    PERMISSIONS.USERS_MANAGE,
+  ]);
+  if (!allowed) {
+    return { success: false, message: 'Forbidden. Insufficient permissions to view roles.' };
+  }
+
   try {
     const roles = await rbacService.listRoles();
     return { success: true, data: roles };
@@ -152,6 +161,11 @@ export async function listPermissionsAction(): Promise<ActionResponse<Permission
   const session = await getSession();
   if (!session) {
     return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  const allowed = await hasPermission(session.userId, PERMISSIONS.ROLES_MANAGE);
+  if (!allowed) {
+    return { success: false, message: 'Forbidden. Insufficient permissions to view permissions.' };
   }
 
   try {

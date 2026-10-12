@@ -12,6 +12,7 @@ interface ProfileDropdownProps {
     email: string;
     phone?: string | null;
     profilePicture?: string | null;
+    roles?: string[];
   } | null;
   isOpen: boolean;
   onClose: () => void;
@@ -98,8 +99,10 @@ export function ProfileDropdown({
             {user?.email || ''}
           </p>
           <div className="mt-1">
-            <span className="inline-block bg-[#dcfce7] text-[#15803d] text-[10px] font-semibold px-2 py-0.5 rounded">
-              Viewer Template
+            <span className="inline-block bg-[#dcfce7] text-[#15803d] text-[10px] font-semibold px-2 py-0.5 rounded capitalize">
+              {user?.roles && user.roles.length > 0
+                ? user.roles[0].replace(/_/g, ' ')
+                : 'Viewer'}
             </span>
           </div>
         </div>

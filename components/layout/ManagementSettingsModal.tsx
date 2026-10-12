@@ -35,15 +35,23 @@ interface ManagementSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialTab?: 'users' | 'roles';
+  canReadUsers?: boolean;
+  canManageRoles?: boolean;
 }
 
 export function ManagementSettingsModal({
   isOpen,
   onClose,
-  initialTab = 'users',
+  initialTab,
+  canReadUsers = true,
+  canManageRoles = true,
 }: ManagementSettingsModalProps) {
   const [isVisible, setIsVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<'users' | 'roles'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'users' | 'roles'>(() => {
+    if (initialTab === 'roles' && canManageRoles) return 'roles';
+    if (initialTab === 'users' && canReadUsers) return 'users';
+    return canReadUsers ? 'users' : 'roles';
+  });
   const isMounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -153,15 +161,15 @@ export function ManagementSettingsModal({
     let isSubscribed = true;
     void Promise.resolve().then(() => {
       if (isSubscribed) {
-        void fetchUsers();
-        void fetchRolesAndPermissions();
+        if (canReadUsers) void fetchUsers();
+        if (canManageRoles || canReadUsers) void fetchRolesAndPermissions();
       }
     });
 
     return () => {
       isSubscribed = false;
     };
-  }, [isOpen, fetchUsers, fetchRolesAndPermissions]);
+  }, [isOpen, canReadUsers, canManageRoles, fetchUsers, fetchRolesAndPermissions]);
 
   const handleDismiss = useCallback(() => {
     if (isClosingRef.current) return;
@@ -286,31 +294,35 @@ export function ManagementSettingsModal({
 
           {/* Navigation Tabs */}
           <div className="flex items-center gap-6 border-b border-gray-100 -mb-3">
-            <button
-              type="button"
-              onClick={() => setActiveTab('users')}
-              className={`pb-3 text-xs sm:text-sm font-semibold flex items-center gap-2 border-b-2 transition cursor-pointer ${
-                activeTab === 'users'
-                  ? 'border-green-600 text-green-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Users ({users.length})</span>
-            </button>
+            {canReadUsers && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('users')}
+                className={`pb-3 text-xs sm:text-sm font-semibold flex items-center gap-2 border-b-2 transition cursor-pointer ${
+                  activeTab === 'users'
+                    ? 'border-green-600 text-green-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>Users ({users.length})</span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('roles')}
-              className={`pb-3 text-xs sm:text-sm font-semibold flex items-center gap-2 border-b-2 transition cursor-pointer ${
-                activeTab === 'roles'
-                  ? 'border-green-600 text-green-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              <Shield className="w-4 h-4" />
-              <span>Roles ({roles.length})</span>
-            </button>
+            {canManageRoles && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('roles')}
+                className={`pb-3 text-xs sm:text-sm font-semibold flex items-center gap-2 border-b-2 transition cursor-pointer ${
+                  activeTab === 'roles'
+                    ? 'border-green-600 text-green-700'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                <span>Roles ({roles.length})</span>
+              </button>
+            )}
           </div>
         </div>
 
