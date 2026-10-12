@@ -99,10 +99,9 @@ export function AnimatedTabContent({
     void container.offsetHeight;
 
     // 3. Trigger transition to newHeight on next frame
-    let animId: number;
     let timerId: NodeJS.Timeout;
 
-    animId = requestAnimationFrame(() => {
+    const animId = requestAnimationFrame(() => {
       container.style.transition = `height ${duration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
       container.style.height = `${newHeight}px`;
 
