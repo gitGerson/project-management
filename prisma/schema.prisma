@@ -23,6 +23,8 @@ model User {
   userRoles   UserRole[]
   boardMembers BoardMember[]
   pinnedBoards UserPinnedBoard[]
+  comments    Comment[]
+  commentReads CommentRead[]
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -73,6 +75,34 @@ model UserPinnedBoard {
 
   @@id([userId, boardId])
   @@map("user_pinned_boards")
+}
+
+model Comment {
+  id              Int      @id @default(autoincrement())
+  commentableType String   @map("commentable_type") @db.VarChar(191)
+  commentableId   Int      @map("commentable_id")
+  userId          Int      @map("user_id")
+  content         String   @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([commentableType, commentableId, id], name: "comments_commentable_id_idx")
+  @@index([userId, createdAt])
+  @@map("comments")
+}
+
+model CommentRead {
+  userId          Int      @map("user_id")
+  commentableType String   @map("commentable_type") @db.VarChar(191)
+  commentableId   Int      @map("commentable_id")
+  lastReadAt      DateTime @default(now()) @map("last_read_at")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, commentableType, commentableId])
+  @@map("comment_reads")
 }
 
 model Role {

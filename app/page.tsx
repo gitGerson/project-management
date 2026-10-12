@@ -8,6 +8,7 @@ import { PERMISSIONS } from '@/modules/rbac/constants';
 import { Header } from '@/components/layout/Header';
 import { FloatingNavbar } from '@/components/layout/FloatingNavbar';
 import { BoardGallery } from '@/components/boards/BoardGallery';
+import { ChatProvider, ChatDrawer } from '@/modules/chat';
 
 export const instant = false;
 
@@ -40,17 +41,22 @@ export default async function HomePage() {
   const userWithRoles = user ? { ...user, roles } : null;
 
   return (
-    <div className="min-h-screen bg-[#f4f5fa] flex flex-col justify-between relative selection:bg-green-100 selection:text-green-800">
-      {/* Top Floating Header */}
-      <Header user={userWithRoles} pinnedBoards={pinnedBoards} />
+    <ChatProvider>
+      <div className="min-h-screen bg-[#f4f5fa] flex flex-col justify-between relative selection:bg-green-100 selection:text-green-800">
+        {/* Top Floating Header */}
+        <Header user={userWithRoles} pinnedBoards={pinnedBoards} />
 
-      {/* Main Board Gallery Content */}
-      <main className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 pt-6 pb-24 flex-1">
-        <BoardGallery initialBoards={boards} permissions={permissions} />
-      </main>
+        {/* Main Board Gallery Content */}
+        <main className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 pt-6 pb-24 flex-1">
+          <BoardGallery initialBoards={boards} permissions={permissions} />
+        </main>
 
-      {/* Center Floating Pill Navbar */}
-      <FloatingNavbar permissions={permissions} />
-    </div>
+        {/* Center Floating Pill Navbar */}
+        <FloatingNavbar permissions={permissions} />
+
+        {/* Seamless Slide-Over Live Chat Panel */}
+        <ChatDrawer />
+      </div>
+    </ChatProvider>
   );
 }

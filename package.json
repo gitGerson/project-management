@@ -4,9 +4,11 @@
   "private": true,
   "packageManager": "pnpm@12.11.2",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node --env-file=.env.local server.mjs",
+    "dev:next": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node server.mjs",
+    "start:next": "next start",
     "lint": "eslint",
     "db:test": "node --env-file=.env.local scripts/test-db.mjs",
     "auth:test": "node --env-file=.env.local scripts/test-auth.mjs",
@@ -19,7 +21,10 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "realtime": "node --env-file=.env.local server/realtime-server.mjs",
+    "server": "node --env-file=.env.local server.mjs",
+    "chat:test": "node --env-file=.env.local scripts/test-chat.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1149.0",
@@ -36,6 +41,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "tailwind-merge": "^3.7.0",
+    "ws": "^8.22.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -45,6 +51,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/ws": "^8.18.2",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "prisma": "^6.19.3",
