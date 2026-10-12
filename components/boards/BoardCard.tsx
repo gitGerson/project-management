@@ -70,9 +70,9 @@ export function BoardCard({
     if (imageUrl && imageUrl.startsWith('gradient:')) {
       const gradientKey = imageUrl.replace('gradient:', '');
       return (
-        <div className={`w-full h-full ${gradientKey} flex items-center justify-center p-4 relative overflow-hidden`}>
-          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center shadow-sm">
-            <span className="text-2xl font-black text-white tracking-wider">
+        <div className={`w-full h-full ${gradientKey} flex items-center justify-center p-3 relative overflow-hidden`}>
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white/20 backdrop-blur-xs border border-white/30 flex items-center justify-center shadow-sm">
+            <span className="text-xl sm:text-2xl font-black text-white tracking-wider">
               {getInitials(board.name)}
             </span>
           </div>
@@ -83,15 +83,15 @@ export function BoardCard({
     // 3. Backward compatible legacy graphics
     if (board.coverType === 'go-digital' || imageUrl === 'go-digital') {
       return (
-        <div className="w-full h-full bg-white flex flex-col items-center justify-center relative overflow-hidden select-none p-4">
+        <div className="w-full h-full bg-white flex flex-col items-center justify-center relative overflow-hidden select-none p-3">
           <div className="transform -rotate-6 transition-transform group-hover:scale-105 duration-200 text-center">
-            <div className="text-red-600 font-black text-4xl sm:text-5xl tracking-tighter drop-shadow-[2px_3px_0px_rgba(0,0,0,0.85)] font-sans leading-none">
+            <div className="text-red-600 font-black text-3xl sm:text-4xl tracking-tighter drop-shadow-[2px_3px_0px_rgba(0,0,0,0.85)] font-sans leading-none">
               GO!
             </div>
-            <div className="bg-black text-white font-extrabold text-xl sm:text-2xl px-3 py-0.5 tracking-wider mt-1 shadow-md">
+            <div className="bg-black text-white font-extrabold text-base sm:text-xl px-2.5 py-0.5 tracking-wider mt-1 shadow-md">
               DIGITAL
             </div>
-            <div className="text-[8px] text-gray-500 tracking-widest uppercase mt-1.5 font-semibold">
+            <div className="text-[7px] text-gray-500 tracking-widest uppercase mt-1 font-semibold">
               ENGAGE • OPTIMISE • SUPPORT
             </div>
           </div>
@@ -101,12 +101,12 @@ export function BoardCard({
 
     if (board.coverType === 'it-operational' || imageUrl === 'it-operational') {
       return (
-        <div className="w-full h-full bg-white flex flex-col items-center justify-center relative overflow-hidden select-none p-4">
+        <div className="w-full h-full bg-white flex flex-col items-center justify-center relative overflow-hidden select-none p-3">
           <div className="transition-transform group-hover:scale-105 duration-200 text-center">
-            <div className="text-yellow-400 font-black text-5xl sm:text-6xl tracking-tight drop-shadow-[3px_4px_0px_#ef4444] font-sans leading-none stroke-black">
+            <div className="text-yellow-400 font-black text-4xl sm:text-5xl tracking-tight drop-shadow-[2px_3px_0px_#ef4444] font-sans leading-none stroke-black">
               IT
             </div>
-            <div className="text-pink-500 font-black text-xl sm:text-2xl tracking-wider drop-shadow-[2px_2px_0px_#000000] uppercase mt-1">
+            <div className="text-pink-500 font-black text-base sm:text-lg tracking-wider drop-shadow-[1.5px_1.5px_0px_#000000] uppercase mt-0.5">
               OPERATIONAL
             </div>
           </div>
@@ -117,8 +117,8 @@ export function BoardCard({
     // 4. Default clean minimalist cover with initials
     return (
       <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200/80 flex items-center justify-center relative overflow-hidden">
-        <div className="w-16 h-16 rounded-2xl bg-white border border-gray-200/80 flex items-center justify-center shadow-xs">
-          <span className="text-2xl font-black text-gray-400 select-none">
+        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white border border-gray-200/80 flex items-center justify-center shadow-xs">
+          <span className="text-xl sm:text-2xl font-black text-gray-400 select-none">
             {getInitials(board.name)}
           </span>
         </div>
@@ -128,17 +128,17 @@ export function BoardCard({
 
   return (
     <div
-      className="group relative bg-white rounded-2xl sm:rounded-3xl border border-gray-200/90 shadow-sm hover:shadow-md transition-all duration-150 overflow-hidden flex flex-col"
+      className="group relative bg-white rounded-2xl border border-gray-200/90 shadow-sm hover:shadow-md transition-all duration-150 overflow-hidden flex flex-col"
     >
       {/* Cover Area */}
-      <div className="h-44 sm:h-48 w-full border-b border-gray-100 flex items-center justify-center overflow-hidden">
+      <div className="h-36 sm:h-40 w-full border-b border-gray-100 flex items-center justify-center overflow-hidden">
         {renderCover()}
       </div>
 
       {/* Footer Area */}
-      <div className="px-4 py-3 bg-gray-50/70 flex items-center justify-between gap-2 min-h-[52px]">
+      <div className="px-3.5 py-2.5 bg-gray-50/70 flex items-center justify-between gap-2 min-h-[46px]">
         <h3
-          className="text-sm font-semibold text-gray-800 truncate flex-1 tracking-tight"
+          className="text-xs sm:text-sm font-semibold text-gray-800 truncate flex-1 tracking-tight"
           title={board.name}
         >
           {board.name}

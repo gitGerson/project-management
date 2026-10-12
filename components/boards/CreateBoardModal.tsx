@@ -245,9 +245,9 @@ export function CreateBoardModal({
             </div>
 
             {/* The Actual Board Card Preview with exact width and height */}
-            <div className="w-[300px] sm:w-[324px] h-[228px] sm:h-[244px] mx-auto bg-white rounded-2xl sm:rounded-3xl border border-gray-200/90 shadow-sm overflow-hidden flex flex-col transition-all">
-              {/* Cover area: exact h-44 sm:h-48 matching BoardCard */}
-              <div className="h-44 sm:h-48 w-full relative overflow-hidden flex items-center justify-center border-b border-gray-100 select-none group flex-shrink-0">
+            <div className="w-[240px] sm:w-[260px] h-[190px] sm:h-[206px] mx-auto bg-white rounded-2xl border border-gray-200/90 shadow-sm overflow-hidden flex flex-col transition-all">
+              {/* Cover area: exact h-36 sm:h-40 matching BoardCard */}
+              <div className="h-36 sm:h-40 w-full relative overflow-hidden flex items-center justify-center border-b border-gray-100 select-none group flex-shrink-0">
                 {customImageUrl ? (
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -261,7 +261,7 @@ export function CreateBoardModal({
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="px-2.5 py-1.5 bg-white text-gray-800 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 hover:bg-gray-50 transition cursor-pointer"
+                        className="px-2 py-1 bg-white text-gray-800 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1 hover:bg-gray-50 transition cursor-pointer"
                       >
                         <Camera className="w-3.5 h-3.5" />
                         <span>Change</span>
@@ -269,7 +269,7 @@ export function CreateBoardModal({
                       <button
                         type="button"
                         onClick={() => setCustomImageUrl(null)}
-                        className="px-2.5 py-1.5 bg-white text-red-600 rounded-lg text-xs font-semibold shadow-xs hover:bg-red-50 transition cursor-pointer"
+                        className="px-2 py-1 bg-white text-red-600 rounded-lg text-xs font-semibold shadow-xs hover:bg-red-50 transition cursor-pointer"
                       >
                         Remove
                       </button>
@@ -277,9 +277,9 @@ export function CreateBoardModal({
                   </>
                 ) : (
                   <>
-                    <div className={`w-full h-full ${activeGradient?.preview || 'bg-gradient-to-br from-slate-100 to-slate-200/80'} flex items-center justify-center p-4`}>
-                      <div className={`w-16 h-16 rounded-2xl ${selectedCover ? 'bg-white/20 backdrop-blur-xs border border-white/30 text-white' : 'bg-white border border-gray-200/80 text-gray-400'} flex items-center justify-center shadow-xs`}>
-                        <span className="text-2xl font-black">{initials}</span>
+                    <div className={`w-full h-full ${activeGradient?.preview || 'bg-gradient-to-br from-slate-100 to-slate-200/80'} flex items-center justify-center p-3`}>
+                      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl ${selectedCover ? 'bg-white/20 backdrop-blur-xs border border-white/30 text-white' : 'bg-white border border-gray-200/80 text-gray-400'} flex items-center justify-center shadow-xs`}>
+                        <span className="text-xl sm:text-2xl font-black">{initials}</span>
                       </div>
                     </div>
 
@@ -288,17 +288,17 @@ export function CreateBoardModal({
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploading}
-                      className="absolute bottom-2.5 right-2.5 px-2.5 py-1.5 bg-white/90 hover:bg-white text-gray-700 text-xs font-medium rounded-lg shadow-sm backdrop-blur-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                      className="absolute bottom-2 right-2 px-2 py-1 bg-white/90 hover:bg-white text-gray-700 text-[11px] font-medium rounded-lg shadow-sm backdrop-blur-xs flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
                     >
                       {isUploading ? (
                         <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-green-700" />
+                          <Loader2 className="w-3 h-3 animate-spin text-green-700" />
                           <span>Uploading...</span>
                         </>
                       ) : (
                         <>
-                          <Camera className="w-3.5 h-3.5 text-gray-600" />
-                          <span>Upload photo</span>
+                          <Camera className="w-3 h-3 text-gray-600" />
+                          <span>Upload</span>
                         </>
                       )}
                     </button>
@@ -306,17 +306,17 @@ export function CreateBoardModal({
                 )}
               </div>
 
-              {/* Card Footer Preview: exact px-4 py-3 min-h-[52px] matching BoardCard */}
-              <div className="px-4 py-3 bg-gray-50/70 flex items-center justify-between gap-2 min-h-[52px]">
-                <h3 className="text-sm font-semibold text-gray-800 truncate flex-1 tracking-tight">
+              {/* Card Footer Preview: exact px-3.5 py-2.5 min-h-[46px] matching BoardCard */}
+              <div className="px-3.5 py-2.5 bg-gray-50/70 flex items-center justify-between gap-2 min-h-[46px]">
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-800 truncate flex-1 tracking-tight">
                   {name.trim() || 'Untitled Board'}
                 </h3>
                 <div className="flex items-center gap-1 text-gray-400">
-                  <div className="p-1.5 rounded-lg text-amber-500">
-                    <Pin className="w-4 h-4 fill-amber-500 text-amber-500" />
+                  <div className="p-1 rounded-lg text-amber-500">
+                    <Pin className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
                   </div>
-                  <div className="p-1.5 text-gray-400">
-                    <Eye className="w-4 h-4" />
+                  <div className="p-1 text-gray-400">
+                    <Eye className="w-3.5 h-3.5" />
                   </div>
                 </div>
               </div>
