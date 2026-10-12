@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth';
-import { hasPermission } from '@/lib/access';
+import { hasPermission, hasAnyPermission } from '@/lib/access';
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import { boardService } from './services/board.service';
 import { createBoardSchema, updateBoardSchema } from './schemas/board.schema';
@@ -14,9 +14,19 @@ export async function listBoardsAction(): Promise<ActionResponse<BoardDTO[]>> {
     return { success: false, message: 'Unauthorized. Please sign in.' };
   }
 
-  const allowed = await hasPermission(session.userId, PERMISSIONS.BOARDS_READ);
+  const allowed = await hasAnyPermission(session.userId, [
+    PERMISSIONS.BOARDS_READ,
+    PERMISSIONS.BOARDS_VIEW_ALL,
+  ]);
   if (!allowed) {
     return { success: false, message: 'Forbidden. You do not have permission to view boards.' };
+  }
+
+  // Only users with BOARDS_VIEW_ALL can see all boards in the system.
+  // Users with only BOARDS_READ will only see assigned boards (future feature).
+  const hasViewAll = await hasPermission(session.userId, PERMISSIONS.BOARDS_VIEW_ALL);
+  if (!hasViewAll) {
+    return { success: true, data: [] };
   }
 
   try {

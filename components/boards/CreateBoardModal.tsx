@@ -9,7 +9,7 @@ import {
   Loader2,
   Camera,
   Pin,
-  MoreVertical,
+  Eye,
   Sparkles,
   AlertCircle,
 } from 'lucide-react';
@@ -316,7 +316,7 @@ export function CreateBoardModal({
                     <Pin className="w-4 h-4 fill-amber-500 text-amber-500" />
                   </div>
                   <div className="p-1.5 text-gray-400">
-                    <MoreVertical className="w-4 h-4" />
+                    <Eye className="w-4 h-4" />
                   </div>
                 </div>
               </div>

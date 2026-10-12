@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth';
 import { getUserPermissions, getUserRoles } from '@/lib/access';
 import { authService } from '@/modules/auth/services/auth.service';
 import { boardService } from '@/modules/boards/services/board.service';
+import { PERMISSIONS } from '@/modules/rbac/constants';
 import { Header } from '@/components/layout/Header';
 import { FloatingNavbar } from '@/components/layout/FloatingNavbar';
 import { BoardGallery } from '@/components/boards/BoardGallery';
@@ -16,13 +17,16 @@ export default async function HomePage() {
     redirect('/login');
   }
 
-  const [user, boards, permissions, roles] = await Promise.all([
+  const [user, permissions, roles] = await Promise.all([
     authService.getUserById(session.userId),
-    boardService.listBoards(),
     getUserPermissions(session.userId),
     getUserRoles(session.userId),
   ]);
 
+  // Only users with BOARDS_VIEW_ALL can view all boards across the system.
+  // Users with only BOARDS_READ will only see assigned boards (future feature).
+  const hasViewAll = permissions.includes(PERMISSIONS.BOARDS_VIEW_ALL);
+  const boards = hasViewAll ? await boardService.listBoards() : [];
   const userWithRoles = user ? { ...user, roles } : null;
 
   return (

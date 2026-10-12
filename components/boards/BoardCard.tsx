@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Pin, MoreVertical, Eye, Pencil, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Pin, Eye } from 'lucide-react';
 
 export interface BoardData {
   id: number;
@@ -19,44 +19,21 @@ interface BoardCardProps {
   board: BoardData;
   onTogglePin?: (id: number) => void;
   onOpen?: (board: BoardData) => void;
-  onEdit?: (board: BoardData) => void;
-  onDelete?: (id: number) => void;
+  canView?: boolean;
 }
 
 export function BoardCard({
   board,
   onTogglePin,
   onOpen,
-  onEdit,
-  onDelete,
+  canView = true,
 }: BoardCardProps) {
   const [isPinned, setIsPinned] = useState(Boolean(board.isPinned));
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    }
-    if (isMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isMenuOpen]);
 
   const handlePinClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsPinned((prev) => !prev);
     onTogglePin?.(board.id);
-  };
-
-  const handleMenuClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsMenuOpen((prev) => !prev);
   };
 
   // Extract initials from board name (up to 2 characters)
@@ -147,16 +124,7 @@ export function BoardCard({
 
   return (
     <div
-      onClick={() => onOpen?.(board)}
-      className="group relative bg-white rounded-2xl sm:rounded-3xl border border-gray-200/90 shadow-sm hover:shadow-md transition-all duration-150 overflow-hidden flex flex-col cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
-      tabIndex={0}
-      role="link"
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onOpen?.(board);
-        }
-      }}
+      className="group relative bg-white rounded-2xl sm:rounded-3xl border border-gray-200/90 shadow-sm hover:shadow-md transition-all duration-150 overflow-hidden flex flex-col"
     >
       {/* Cover Area */}
       <div className="h-44 sm:h-48 w-full border-b border-gray-100 flex items-center justify-center overflow-hidden">
@@ -192,68 +160,18 @@ export function BoardCard({
             />
           </button>
 
-          {/* More Options Menu */}
-          <div className="relative" ref={menuRef}>
+          {/* View Details Eye Button - only if permitted to view boards */}
+          {canView && (
             <button
               type="button"
-              onClick={handleMenuClick}
+              onClick={() => onOpen?.(board)}
               className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition active:scale-95 cursor-pointer"
-              title="Board actions"
-              aria-label="Board actions"
-              aria-expanded={isMenuOpen}
+              title="View board details"
+              aria-label="View board details"
             >
-              <MoreVertical className="w-4 h-4" />
+              <Eye className="w-4 h-4" />
             </button>
-
-            {isMenuOpen && (
-              <div
-                className="absolute right-0 bottom-full mb-1 sm:bottom-auto sm:top-full sm:mt-1 w-36 bg-white border border-gray-100 shadow-xl rounded-xl py-1 z-30 text-gray-700 text-xs"
-                role="menu"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    onOpen?.(board);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition text-left cursor-pointer"
-                  role="menuitem"
-                >
-                  <Eye className="w-3.5 h-3.5 text-gray-500" />
-                  <span>View</span>
-                </button>
-                {onEdit && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onEdit(board);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition text-left cursor-pointer"
-                    role="menuitem"
-                  >
-                    <Pencil className="w-3.5 h-3.5 text-gray-500" />
-                    <span>Edit</span>
-                  </button>
-                )}
-                {onDelete && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onDelete(board.id);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 text-red-600 transition text-left cursor-pointer"
-                    role="menuitem"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                    <span>Delete</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
