@@ -17,9 +17,15 @@ import {
   ArrowUp,
   ArrowDown,
   Eye,
+  Clock,
 } from 'lucide-react';
 import type { CardDTO } from '../types';
 import { getContrastTextColor } from '../utils/color-contrast';
+import {
+  formatCompactDate,
+  formatDateRange,
+  getDueDateStatus,
+} from '../utils/date-utils';
 
 const animateLayoutChanges: AnimateLayoutChanges = (args) =>
   args.wasDragging ? false : defaultAnimateLayoutChanges(args);
@@ -337,7 +343,7 @@ export function KanbanCard({
                     className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-emerald-50 flex items-center gap-2 cursor-pointer text-emerald-800 font-medium"
                   >
                     <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Buka Detail</span>
+                    <span>Open Details</span>
                   </button>
 
                   {canUpdate && (
@@ -428,9 +434,28 @@ export function KanbanCard({
         )}
       </div>
 
-      {/* Card Footer: Metadata (Description indicator & Owner avatar) */}
+      {/* Card Footer: Metadata (Dates, Description indicator & Owner avatar) */}
       <div className="mt-2.5 pt-2 border-t border-gray-50 flex items-center justify-between text-gray-400">
         <div className="flex items-center gap-2">
+          {/* Due date badge */}
+          {(card.startDate || card.dueDate) && (
+            <span
+              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] border shadow-2xs ${
+                getDueDateStatus(card.dueDate).badgeClass
+              }`}
+              title={formatDateRange(card.startDate, card.dueDate)}
+            >
+              <Clock className="w-3 h-3" />
+              <span>
+                {card.dueDate
+                  ? formatCompactDate(card.dueDate)
+                  : card.startDate
+                  ? formatCompactDate(card.startDate)
+                  : ''}
+              </span>
+            </span>
+          )}
+
           {card.description && (
             <span
               className="flex items-center text-gray-400 hover:text-gray-600"

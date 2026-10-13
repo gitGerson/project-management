@@ -6,6 +6,7 @@ import type { CardDTO, UpdateCardInput } from '../types';
 import type { ListDTO } from '@/modules/lists/types';
 import { CardCommentsSection } from './CardCommentsSection';
 import { CardLabelPicker } from './CardLabelPicker';
+import { CardDateRangePicker } from './CardDateRangePicker';
 import {
   X,
   AlignLeft,
@@ -222,7 +223,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
   const formatDate = (isoStr: string) => {
     try {
       const d = new Date(isoStr);
-      return d.toLocaleDateString('id-ID', {
+      return d.toLocaleDateString('en-US', {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
@@ -317,7 +318,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                 {showConfirmDelete ? (
                   <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-xl p-1 animate-in fade-in duration-100">
                     <span className="text-[11px] font-semibold text-red-700 pl-1.5">
-                      Hapus kartu?
+                      Delete card?
                     </span>
                     <button
                       type="button"
@@ -325,14 +326,14 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                       disabled={isDeleting}
                       className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer"
                     >
-                      {isDeleting ? '...' : 'Ya'}
+                      {isDeleting ? '...' : 'Yes'}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowConfirmDelete(false)}
                       className="px-2 py-0.5 bg-white text-gray-600 hover:bg-gray-100 text-[11px] font-medium rounded-lg transition-colors cursor-pointer border border-gray-200"
                     >
-                      Batal
+                      Cancel
                     </button>
                   </div>
                 ) : (
@@ -340,7 +341,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                     type="button"
                     onClick={() => setShowConfirmDelete(true)}
                     className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                    title="Hapus kartu"
+                    title="Delete card"
                     aria-label="Delete card"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -353,7 +354,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
               type="button"
               onClick={onClose}
               className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
-              title="Tutup (Esc)"
+              title="Close (Esc)"
               aria-label="Close modal"
             >
               <X className="w-5 h-5" />
@@ -372,7 +373,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            Konten Kartu
+            Card Details
           </button>
           <button
             type="button"
@@ -383,7 +384,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
-            <span>Komentar</span>
+            <span>Comments</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
               {commentsCount}
             </span>
@@ -399,7 +400,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
             }`}
           >
             {/* Card Title */}
-            <div className="mb-6">
+            <div className="mb-4">
               {isEditingTitle && canUpdate ? (
                 <div className="flex items-start gap-2">
                   <input
@@ -416,14 +417,14 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                     }}
                     disabled={isSaving}
                     className="w-full text-lg sm:text-xl font-bold text-gray-900 bg-gray-50 border border-emerald-500 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                    placeholder="Judul kartu..."
+                    placeholder="Card title..."
                   />
                   <button
                     type="button"
                     onClick={handleSaveTitle}
                     disabled={isSaving}
                     className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors cursor-pointer shrink-0"
-                    title="Simpan judul"
+                    title="Save title"
                   >
                     <Check className="w-4 h-4" />
                   </button>
@@ -434,7 +435,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                       setIsEditingTitle(false);
                     }}
                     className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl transition-colors cursor-pointer shrink-0"
-                    title="Batal"
+                    title="Cancel"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -447,7 +448,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                     className={`text-lg sm:text-2xl font-bold text-gray-900 leading-snug break-words ${
                       canUpdate ? 'cursor-pointer hover:text-emerald-700 transition-colors' : ''
                     }`}
-                    title={canUpdate ? 'Klik untuk mengubah judul' : undefined}
+                    title={canUpdate ? 'Click to edit title' : undefined}
                   >
                     {card.title}
                   </h2>
@@ -456,7 +457,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                       type="button"
                       onClick={() => setIsEditingTitle(true)}
                       className="p-1.5 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all shrink-0 cursor-pointer"
-                      title="Ubah judul"
+                      title="Edit title"
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
@@ -465,81 +466,48 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
               )}
             </div>
 
-            {/* Properties Information Card */}
-            <div className="bg-gray-50/80 border border-gray-100 rounded-2xl p-4 sm:p-5 mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Creator */}
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white shadow-2xs">
-                    {card.owner?.profilePicture ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={card.owner.profilePicture}
-                        alt={card.owner.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span>{creatorInitial}</span>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                      Dibuat oleh
-                    </span>
-                    <span className="block text-xs font-bold text-gray-800 truncate">
-                      {card.owner?.name || 'User'}
-                    </span>
-                  </div>
-                </div>
+            {/* Divider under Card Title */}
+            <div className="h-px bg-gray-100 mb-5" />
 
-                {/* List Column */}
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-white border border-gray-200/80 text-gray-600 flex items-center justify-center shrink-0 shadow-2xs">
-                    <Columns3 className="w-4 h-4 text-gray-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                      Daftar
-                    </span>
-                    <span className="block text-xs font-bold text-gray-800 truncate">
-                      {currentList?.title || 'Unknown List'}
-                    </span>
-                  </div>
+            {/* Properties Information (Creator & Dates) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center mb-6">
+              {/* Creator */}
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white shadow-2xs">
+                  {card.owner?.profilePicture ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={card.owner.profilePicture}
+                      alt={card.owner.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span>{creatorInitial}</span>
+                  )}
                 </div>
-
-                {/* Created At */}
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-white border border-gray-200/80 text-gray-600 flex items-center justify-center shrink-0 shadow-2xs">
-                    <Calendar className="w-4 h-4 text-gray-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                      Dibuat pada
-                    </span>
-                    <span className="block text-xs font-medium text-gray-700">
-                      {formatDate(card.createdAt)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Updated At */}
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-white border border-gray-200/80 text-gray-600 flex items-center justify-center shrink-0 shadow-2xs">
-                    <Clock className="w-4 h-4 text-gray-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                      Terakhir diubah
-                    </span>
-                    <span className="block text-xs font-medium text-gray-700">
-                      {formatDate(card.updatedAt)}
-                    </span>
-                  </div>
+                <div className="min-w-0">
+                  <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                    Created by
+                  </span>
+                  <span className="block text-xs font-bold text-gray-800 truncate">
+                    {card.owner?.name || 'User'}
+                  </span>
+                  <span className="block text-[10px] text-gray-400 font-medium">
+                    {formatDate(card.createdAt)}
+                  </span>
                 </div>
               </div>
+
+              {/* Dates */}
+              <CardDateRangePicker
+                card={card}
+                canUpdate={canUpdate}
+                onCardUpdated={(updated) => onCardUpdated?.(updated)}
+                variant="property"
+              />
             </div>
 
-            {/* Labels Section (Matching User Reference) */}
+            {/* Labels Section (Full width, wrapping naturally without gap) */}
             <CardLabelPicker
               card={card}
               canUpdate={canUpdate}
@@ -552,7 +520,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                 <div className="flex items-center gap-2">
                   <AlignLeft className="w-4 h-4 text-gray-600" />
                   <h3 className="text-xs sm:text-sm font-bold text-gray-900 uppercase tracking-wider">
-                    Deskripsi
+                    Description
                   </h3>
                 </div>
 
@@ -562,7 +530,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                     onClick={() => setIsEditingDesc(true)}
                     className="px-2.5 py-1 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
                   >
-                    {card.description ? 'Ubah' : 'Tambah'}
+                    {card.description ? 'Edit' : 'Add'}
                   </button>
                 )}
               </div>
@@ -575,7 +543,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                     value={descValue}
                     onChange={(e) => setDescValue(e.target.value)}
                     disabled={isSaving}
-                    placeholder="Tambahkan deskripsi yang lebih terperinci mengenai kartu ini..."
+                    placeholder="Add a more detailed description for this card..."
                     className="w-full text-xs sm:text-sm text-gray-800 bg-gray-50 border border-emerald-500 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 leading-relaxed resize-y"
                   />
                   <div className="flex items-center gap-2">
@@ -585,7 +553,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                       disabled={isSaving}
                       className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                     >
-                      {isSaving ? 'Menyimpan...' : 'Simpan Deskripsi'}
+                      {isSaving ? 'Saving...' : 'Save Description'}
                     </button>
                     <button
                       type="button"
@@ -595,7 +563,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                       }}
                       className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
                     >
-                      Batal
+                      Cancel
                     </button>
                   </div>
                 </div>
@@ -605,7 +573,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                   className={`p-4 bg-gray-50/70 border border-gray-100 rounded-2xl text-xs sm:text-sm text-gray-800 leading-relaxed whitespace-pre-wrap ${
                     canUpdate ? 'cursor-pointer hover:border-gray-200 transition-colors' : ''
                   }`}
-                  title={canUpdate ? 'Klik untuk mengubah deskripsi' : undefined}
+                  title={canUpdate ? 'Click to edit description' : undefined}
                 >
                   {card.description}
                 </div>
@@ -617,11 +585,11 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                   }`}
                 >
                   <p className="text-xs font-medium text-gray-500">
-                    Belum ada deskripsi untuk kartu ini.
+                    No description provided for this card.
                   </p>
                   {canUpdate && (
                     <p className="text-[11px] text-emerald-600 font-semibold mt-1">
-                      Klik di sini untuk menambahkan deskripsi...
+                      Click here to add a description...
                     </p>
                   )}
                 </div>

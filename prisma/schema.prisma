@@ -77,6 +77,8 @@ model Card {
   status      String    @default("active") @db.VarChar(20)
   rank        String    @db.VarChar(255)
   sortOrder   Int       @default(0) @map("sort_order")
+  startDate   DateTime? @map("start_date")
+  dueDate     DateTime? @map("due_date")
   version     Int       @default(1)
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -90,6 +92,7 @@ model Card {
   @@index([listId, sortOrder], name: "cards_list_id_sort_order_idx")
   @@index([boardId, status], name: "cards_board_id_status_idx")
   @@index([ownerId], name: "cards_owner_id_idx")
+  @@index([boardId, dueDate], name: "cards_board_id_due_date_idx")
   @@map("cards")
 }
 

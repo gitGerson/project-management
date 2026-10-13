@@ -240,7 +240,7 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
         });
         setViewMode('list');
       } else {
-        alert(res.message || 'Gagal menghapus label');
+        alert(res.message || 'Failed to delete label');
       }
     } finally {
       setIsSubmitting(false);
@@ -345,11 +345,11 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
                 <div className="max-h-60 overflow-y-auto space-y-1.5 pr-0.5 scrollbar-thin">
                   {loading ? (
                     <div className="py-6 text-center text-xs text-gray-400">
-                      Memuat label...
+                      Loading labels...
                     </div>
                   ) : filteredLabels.length === 0 ? (
                     <div className="py-4 text-center text-xs text-gray-400">
-                      Tidak ada label ditemukan
+                      No labels found
                     </div>
                   ) : (
                     filteredLabels.map((lbl) => {

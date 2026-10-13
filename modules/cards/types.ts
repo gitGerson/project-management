@@ -22,6 +22,8 @@ export interface CardDTO {
   status: string;
   rank: string;
   sortOrder: number;
+  startDate: string | null;
+  dueDate: string | null;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -50,6 +52,8 @@ export interface CreateCardInput {
   listId: number;
   title: string;
   description?: string | null;
+  startDate?: string | null;
+  dueDate?: string | null;
   position?: 'top' | 'bottom';
 }
 
@@ -57,6 +61,8 @@ export interface UpdateCardInput {
   title?: string;
   description?: string | null;
   status?: string;
+  startDate?: string | null;
+  dueDate?: string | null;
 }
 
 export interface MoveCardInput {

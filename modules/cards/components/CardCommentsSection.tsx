@@ -190,7 +190,7 @@ export const CardCommentsSection: React.FC<CardCommentsSectionProps> = ({
     } else {
       // Rollback optimistic comment
       setComments((prev) => prev.filter((c) => c.tempId !== tempId));
-      alert(res.message || 'Gagal mengirim komentar');
+      alert(res.message || 'Failed to send comment');
     }
   };
 
@@ -203,7 +203,7 @@ export const CardCommentsSection: React.FC<CardCommentsSectionProps> = ({
             <MessageSquare className="w-3.5 h-3.5 text-emerald-700" />
           </div>
           <h3 className="font-bold text-xs uppercase tracking-wider text-gray-800">
-            Aktivitas & Komentar
+            Activity & Comments
           </h3>
           <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
             {comments.length}
@@ -219,7 +219,7 @@ export const CardCommentsSection: React.FC<CardCommentsSectionProps> = ({
         {loading ? (
           <div className="h-full flex flex-col items-center justify-center p-8 text-gray-400">
             <Loader2 className="w-6 h-6 text-emerald-600 animate-spin mb-2" />
-            <p className="text-xs text-gray-500 font-medium">Memuat komentar...</p>
+            <p className="text-xs text-gray-500 font-medium">Loading comments...</p>
           </div>
         ) : error ? (
           <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
@@ -230,9 +230,9 @@ export const CardCommentsSection: React.FC<CardCommentsSectionProps> = ({
             <div className="w-12 h-12 rounded-2xl bg-white border border-gray-200/80 shadow-xs flex items-center justify-center mb-3 text-emerald-600">
               <Sparkles className="w-5 h-5 text-emerald-600" />
             </div>
-            <p className="text-xs font-bold text-gray-700">Belum ada komentar</p>
+            <p className="text-xs font-bold text-gray-700">No comments yet</p>
             <p className="text-[11px] text-gray-400 mt-1 max-w-[220px] leading-relaxed">
-              Mulai diskusi atau tinggalkan catatan untuk tim pada kartu ini.
+              Start a discussion or leave a note for your team on this card.
             </p>
           </div>
         ) : (
@@ -258,7 +258,7 @@ export const CardCommentsSection: React.FC<CardCommentsSectionProps> = ({
           replyingTo={replyingTo}
           onCancelReply={() => setReplyingTo(null)}
           mentionCandidates={mentionCandidates}
-          placeholder="Tulis komentar atau gunakan @..."
+          placeholder="Write a comment or mention with @..."
           disabled={loading}
         />
       </div>

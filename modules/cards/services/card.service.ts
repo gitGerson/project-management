@@ -132,6 +132,16 @@ export class CardService {
       status: card.status,
       rank: card.rank,
       sortOrder: card.sortOrder,
+      startDate: card.startDate
+        ? card.startDate instanceof Date
+          ? card.startDate.toISOString()
+          : card.startDate
+        : null,
+      dueDate: card.dueDate
+        ? card.dueDate instanceof Date
+          ? card.dueDate.toISOString()
+          : card.dueDate
+        : null,
       version: card.version,
       createdAt: card.createdAt instanceof Date ? card.createdAt.toISOString() : card.createdAt,
       updatedAt: card.updatedAt instanceof Date ? card.updatedAt.toISOString() : card.updatedAt,
@@ -265,6 +275,8 @@ export class CardService {
         ownerId: userId,
         title: input.title.trim(),
         description: input.description?.trim() || null,
+        startDate: input.startDate ? new Date(input.startDate) : null,
+        dueDate: input.dueDate ? new Date(input.dueDate) : null,
         status: 'active',
         rank: newRank,
         version: 1,
@@ -281,28 +293,7 @@ export class CardService {
       },
     });
 
-    const result: CardDTO = {
-      id: card.id,
-      boardId: card.boardId,
-      listId: card.listId,
-      ownerId: card.ownerId,
-      title: card.title,
-      description: card.description,
-      status: card.status,
-      rank: card.rank,
-      sortOrder: card.sortOrder,
-      version: card.version,
-      createdAt: card.createdAt.toISOString(),
-      updatedAt: card.updatedAt.toISOString(),
-      owner: card.owner
-        ? {
-            id: card.owner.id,
-            name: card.owner.name,
-            username: card.owner.username,
-            profilePicture: card.owner.profilePicture,
-          }
-        : undefined,
-    };
+    const result = this.mapCardToDTO(card);
 
     await publishCardEvent({
       type: 'card.created',
@@ -342,6 +333,12 @@ export class CardService {
           description: input.description ? input.description.trim() : null,
         }),
         ...(input.status !== undefined && { status: input.status.trim() }),
+        ...(input.startDate !== undefined && {
+          startDate: input.startDate ? new Date(input.startDate) : null,
+        }),
+        ...(input.dueDate !== undefined && {
+          dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        }),
         version: { increment: 1 },
       },
       include: {
