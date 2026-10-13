@@ -203,7 +203,7 @@ export function BoardDetailHeader({
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="hidden lg:flex p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition active:scale-95 cursor-pointer"
+              className="flex p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition active:scale-95 cursor-pointer"
               title={isFullscreen ? 'Exit full screen' : 'Full screen'}
               aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
             >
