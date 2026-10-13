@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { publishBoardMemberEvent } from '@/modules/board-members/services/board-member-publisher';
 import type { BoardDTO, CreateBoardInput, UpdateBoardInput } from '../types';
 
 export class BoardService {
@@ -135,7 +136,7 @@ export class BoardService {
   }
 
   async createBoard(data: CreateBoardInput, creatorUserId?: number): Promise<BoardDTO> {
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const board = await tx.board.create({
         data: {
           name: data.name.trim(),
@@ -163,6 +164,16 @@ export class BoardService {
         updatedAt: board.updatedAt,
       };
     });
+
+    if (creatorUserId) {
+      await publishBoardMemberEvent({
+        boardId: result.id,
+        action: 'assigned',
+        affectedUserIds: [creatorUserId],
+      });
+    }
+
+    return result;
   }
 
   async updateBoard(id: number, data: UpdateBoardInput): Promise<BoardDTO> {
@@ -198,6 +209,12 @@ export class BoardService {
 
     await prisma.board.delete({
       where: { id },
+    });
+
+    await publishBoardMemberEvent({
+      boardId: id,
+      action: 'deleted',
+      affectedUserIds: [],
     });
 
     return true;

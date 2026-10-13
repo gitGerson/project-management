@@ -131,6 +131,28 @@ export function BoardMembersSection({ boardId, canEdit = true }: BoardMembersSec
     };
   }, [boardId]);
 
+  // Listen for real-time board member updates from other users or actions
+  useEffect(() => {
+    const handleUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ boardId: number }>;
+      if (customEvent.detail?.boardId === boardId) {
+        getBoardMembersAction(boardId).then((res) => {
+          if (res.success && res.data) {
+            const data = res.data;
+            setSavedMembers(data);
+            setStagedMembers((currentStaged) => {
+              if (savedMembers.length !== currentStaged.length) return currentStaged;
+              return data;
+            });
+          }
+        });
+      }
+    };
+
+    window.addEventListener('board-members-updated', handleUpdated);
+    return () => window.removeEventListener('board-members-updated', handleUpdated);
+  }, [boardId, savedMembers.length]);
+
   // Check if staged differs from saved
   const isDirty = React.useMemo(() => {
     if (savedMembers.length !== stagedMembers.length) return true;

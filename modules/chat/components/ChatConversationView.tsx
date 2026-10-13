@@ -28,6 +28,7 @@ interface ChatConversationViewProps {
   onBack: () => void;
   onClose: () => void;
   onRefreshParentList?: () => void;
+  onAccessRevoked?: () => void;
 }
 
 export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
@@ -37,6 +38,7 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
   onBack,
   onClose,
   onRefreshParentList,
+  onAccessRevoked,
 }) => {
   const [comments, setComments] = useState<CommentDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +95,11 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
     onCommentReceived: handleCommentReceived,
   });
 
+  const onAccessRevokedRef = useRef(onAccessRevoked);
+  useEffect(() => {
+    onAccessRevokedRef.current = onAccessRevoked;
+  }, [onAccessRevoked]);
+
   // Fetch initial comments and mention candidates
   useEffect(() => {
     let isMounted = true;
@@ -109,7 +116,16 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
           if (onRefreshParentList) onRefreshParentList();
           setTimeout(() => scrollToBottom(false), 50);
         } else {
-          setError(res.message || 'Failed to load comments');
+          const msg = res.message || 'Failed to load comments';
+          if (
+            msg.toLowerCase().includes('forbidden') ||
+            msg.toLowerCase().includes('permission') ||
+            msg.toLowerCase().includes('access')
+          ) {
+            onAccessRevokedRef.current?.();
+          } else {
+            setError(msg);
+          }
         }
       })
       .catch((err) => {
@@ -202,7 +218,16 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
     } else {
       // Remove on failure
       setComments((prev) => prev.filter((c) => c.tempId !== tempId));
-      alert(res.message || 'Failed to send message');
+      const msg = res.message || 'Failed to send message';
+      if (
+        msg.toLowerCase().includes('forbidden') ||
+        msg.toLowerCase().includes('permission') ||
+        msg.toLowerCase().includes('access')
+      ) {
+        onAccessRevoked?.();
+      } else {
+        alert(msg);
+      }
     }
   };
 

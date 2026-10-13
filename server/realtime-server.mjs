@@ -153,7 +153,7 @@ wss.on('connection', (ws) => {
 async function startRedisSubscription() {
   try {
     await redisSub.connect();
-    await redisSub.psubscribe('chat:*');
+    await redisSub.psubscribe('chat:*', 'board:*');
 
     redisSub.on('pmessage', (pattern, channel, message) => {
       try {
@@ -176,15 +176,35 @@ async function startRedisSubscription() {
 
         // Global broadcast for chat list unread counts
         if (channel === 'chat:global') {
+          const isBoard = payload.type === 'board.members.updated';
           const globalNotice = JSON.stringify({
-            type: 'chat.list.refresh',
+            type: isBoard ? 'board.members.updated' : 'chat.list.refresh',
             scopeType: payload.scopeType,
             scopeId: payload.scopeId,
-            occurredAt: payload.occurredAt,
+            boardId: payload.boardId,
+            action: payload.action,
+            affectedUserIds: payload.affectedUserIds,
+            occurredAt: payload.occurredAt || new Date().toISOString(),
           });
           for (const client of wss.clients) {
             if (client.readyState === WebSocket.OPEN) {
               client.send(globalNotice);
+            }
+          }
+        }
+
+        // Broadcast board membership updates
+        if (channel === 'board:members' || payload.type === 'board.members.updated') {
+          const memberNotice = JSON.stringify({
+            type: 'board.members.updated',
+            boardId: payload.boardId,
+            action: payload.action,
+            affectedUserIds: payload.affectedUserIds || [],
+            occurredAt: payload.occurredAt || new Date().toISOString(),
+          });
+          for (const client of wss.clients) {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(memberNotice);
             }
           }
         }
@@ -193,7 +213,7 @@ async function startRedisSubscription() {
       }
     });
 
-    console.log(`[Realtime] Redis subscriber listening on chat:*`);
+    console.log(`[Realtime] Redis subscriber listening on chat:* and board:*`);
   } catch (error) {
     console.warn('[Realtime] Notice: Redis not reachable. Realtime server will fallback to local routing.', error.message);
   }

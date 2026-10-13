@@ -6,7 +6,8 @@ import { BoardCard, type BoardData } from './BoardCard';
 import { CreateBoardCard } from './CreateBoardCard';
 import { CreateBoardModal } from './CreateBoardModal';
 import { BoardModal } from './BoardModal';
-import { deleteBoardAction, togglePinBoardAction } from '@/modules/boards/actions';
+import { deleteBoardAction, togglePinBoardAction, listBoardsAction } from '@/modules/boards/actions';
+import { useRealtimeChat } from '@/modules/chat/hooks/useRealtimeChat';
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import type { BoardDTO } from '@/modules/boards/types';
 
@@ -113,9 +114,41 @@ export function BoardGallery({ initialBoards, permissions }: BoardGalleryProps) 
     prevRects.current.clear();
   }, [boards]);
 
-  useEffect(() => {
+  const [prevInitialBoards, setPrevInitialBoards] = useState(initialBoards);
+  if (prevInitialBoards !== initialBoards) {
+    setPrevInitialBoards(initialBoards);
     setBoards(sortBoards(initialBoards));
-  }, [initialBoards]);
+  }
+
+  // Realtime update: refresh boards list when board membership is assigned, unassigned, or modified
+  const refreshBoards = useCallback(async () => {
+    try {
+      const res = await listBoardsAction();
+      if (res.success && res.data) {
+        snapshotCardRects();
+        setBoards(sortBoards(res.data));
+      }
+    } catch (err) {
+      console.error('Failed to refresh boards list:', err);
+    }
+  }, [snapshotCardRects]);
+
+  useRealtimeChat({
+    onBoardMembersUpdated: () => {
+      refreshBoards();
+    },
+    onRefreshList: () => {
+      refreshBoards();
+    },
+  });
+
+  useEffect(() => {
+    const handleEvent = () => {
+      refreshBoards();
+    };
+    window.addEventListener('board-members-updated', handleEvent);
+    return () => window.removeEventListener('board-members-updated', handleEvent);
+  }, [refreshBoards]);
 
   useEffect(() => {
     const handleOpenBoardEvent = (e: Event) => {

@@ -4,8 +4,17 @@ import { useEffect, useState, useRef } from 'react';
 import type { CommentDTO } from '../types';
 import { getChatWsTokenAction } from '../actions';
 
+export interface BoardMembersUpdatedEvent {
+  type: string;
+  boardId: number;
+  action?: string;
+  affectedUserIds?: number[];
+  occurredAt?: string;
+}
+
 type CommentHandler = (comment: CommentDTO) => void;
 type RefreshHandler = () => void;
+type BoardMembersUpdatedHandler = (event: BoardMembersUpdatedEvent) => void;
 type StatusHandler = (connected: boolean) => void;
 
 class RealtimeChatManager {
@@ -17,6 +26,7 @@ class RealtimeChatManager {
 
   private roomListeners = new Map<string, Set<CommentHandler>>();
   private refreshListeners = new Set<RefreshHandler>();
+  private boardMembersListeners = new Set<BoardMembersUpdatedHandler>();
   private statusListeners = new Set<StatusHandler>();
 
   public subscribeRoom(room: string, handler: CommentHandler): () => void {
@@ -42,6 +52,13 @@ class RealtimeChatManager {
     this.refreshListeners.add(handler);
     return () => {
       this.refreshListeners.delete(handler);
+    };
+  }
+
+  public onBoardMembersUpdated(handler: BoardMembersUpdatedHandler): () => void {
+    this.boardMembersListeners.add(handler);
+    return () => {
+      this.boardMembersListeners.delete(handler);
     };
   }
 
@@ -136,6 +153,43 @@ class RealtimeChatManager {
             for (const handler of this.refreshListeners) {
               handler();
             }
+            if (data.boardId || data.action) {
+              const eventPayload: BoardMembersUpdatedEvent = {
+                type: 'board.members.updated',
+                boardId: Number(data.boardId || 0),
+                action: data.action,
+                affectedUserIds: data.affectedUserIds,
+                occurredAt: data.occurredAt,
+              };
+              for (const handler of this.boardMembersListeners) {
+                handler(eventPayload);
+              }
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(
+                  new CustomEvent('board-members-updated', { detail: eventPayload })
+                );
+              }
+            }
+          } else if (data.type === 'board.members.updated') {
+            const eventPayload: BoardMembersUpdatedEvent = {
+              type: data.type,
+              boardId: Number(data.boardId),
+              action: data.action,
+              affectedUserIds: data.affectedUserIds,
+              occurredAt: data.occurredAt,
+            };
+            for (const handler of this.boardMembersListeners) {
+              handler(eventPayload);
+            }
+            // Trigger chat list refresh so newly assigned/unassigned board chats immediately show/hide
+            for (const handler of this.refreshListeners) {
+              handler();
+            }
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('board-members-updated', { detail: eventPayload })
+              );
+            }
           }
         } catch {
           // Ignore
@@ -182,18 +236,22 @@ interface UseRealtimeChatOptions {
   room?: string; // e.g. "board:1"
   onCommentReceived?: (comment: CommentDTO) => void;
   onRefreshList?: () => void;
+  onBoardMembersUpdated?: (event: BoardMembersUpdatedEvent) => void;
 }
 
 export function useRealtimeChat(options: UseRealtimeChatOptions = {}) {
-  const { room, onCommentReceived, onRefreshList } = options;
+  const { room, onCommentReceived, onRefreshList, onBoardMembersUpdated } = options;
   const [isConnected, setIsConnected] = useState(chatManager.isConnected);
 
   const onCommentReceivedRef = useRef(onCommentReceived);
   const onRefreshListRef = useRef(onRefreshList);
+  const onBoardMembersUpdatedRef = useRef(onBoardMembersUpdated);
+
   useEffect(() => {
     onCommentReceivedRef.current = onCommentReceived;
     onRefreshListRef.current = onRefreshList;
-  }, [onCommentReceived, onRefreshList]);
+    onBoardMembersUpdatedRef.current = onBoardMembersUpdated;
+  }, [onCommentReceived, onRefreshList, onBoardMembersUpdated]);
 
   // Subscribe to connection status
   useEffect(() => {
@@ -208,6 +266,14 @@ export function useRealtimeChat(options: UseRealtimeChatOptions = {}) {
       onRefreshListRef.current?.();
     });
   }, [onRefreshList]);
+
+  // Subscribe to board members updated
+  useEffect(() => {
+    if (!onBoardMembersUpdated) return;
+    return chatManager.onBoardMembersUpdated((event) => {
+      onBoardMembersUpdatedRef.current?.(event);
+    });
+  }, [onBoardMembersUpdated]);
 
   // Subscribe to specific room
   useEffect(() => {

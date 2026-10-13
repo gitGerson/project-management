@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { BoardRole } from '@prisma/client';
+import { publishBoardMemberEvent } from './board-member-publisher';
 import type {
   BoardMemberDTO,
   BoardMemberUserDTO,
@@ -164,7 +165,7 @@ export class BoardMemberService {
       },
     });
 
-    return {
+    const result: BoardMemberDTO = {
       boardId: record.boardId,
       userId: record.userId,
       role: record.role as BoardMemberRole,
@@ -178,6 +179,14 @@ export class BoardMemberService {
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     };
+
+    await publishBoardMemberEvent({
+      boardId: data.boardId,
+      action: 'assigned',
+      affectedUserIds: [data.userId],
+    });
+
+    return result;
   }
 
   async updateMemberRole(data: UpdateBoardMemberRoleInput): Promise<BoardMemberDTO> {
@@ -217,7 +226,7 @@ export class BoardMemberService {
       },
     });
 
-    return {
+    const result: BoardMemberDTO = {
       boardId: record.boardId,
       userId: record.userId,
       role: record.role as BoardMemberRole,
@@ -231,6 +240,14 @@ export class BoardMemberService {
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     };
+
+    await publishBoardMemberEvent({
+      boardId: data.boardId,
+      action: 'role_updated',
+      affectedUserIds: [data.userId],
+    });
+
+    return result;
   }
 
   async removeMember(boardId: number, userId: number): Promise<boolean> {
@@ -254,6 +271,12 @@ export class BoardMemberService {
           userId,
         },
       },
+    });
+
+    await publishBoardMemberEvent({
+      boardId,
+      action: 'unassigned',
+      affectedUserIds: [userId],
     });
 
     return true;
@@ -291,9 +314,16 @@ export class BoardMemberService {
     boardId: number,
     members: SyncBoardMemberItem[]
   ): Promise<BoardMemberDTO[]> {
-    return await prisma.$transaction(async (tx) => {
-      const targetUserIds = members.map((m) => m.userId);
+    // 0. Collect previous member IDs to track who is added, removed, or updated
+    const prevMembers = await prisma.boardMember.findMany({
+      where: { boardId },
+      select: { userId: true },
+    });
+    const prevUserIds = prevMembers.map((m) => m.userId);
+    const targetUserIds = members.map((m) => m.userId);
+    const allAffectedUserIds = Array.from(new Set([...prevUserIds, ...targetUserIds]));
 
+    const updatedList = await prisma.$transaction(async (tx) => {
       // 1. Remove members not in target list
       await tx.boardMember.deleteMany({
         where: {
@@ -338,7 +368,7 @@ export class BoardMemberService {
         },
       });
 
-      const updatedList: BoardMemberDTO[] = records.map((record) => ({
+      const list: BoardMemberDTO[] = records.map((record) => ({
         boardId: record.boardId,
         userId: record.userId,
         role: record.role as BoardMemberRole,
@@ -353,15 +383,23 @@ export class BoardMemberService {
         updatedAt: record.updatedAt,
       }));
 
-      updatedList.sort((a, b) => {
+      list.sort((a, b) => {
         const pA = ROLE_PRIORITY[a.role] ?? 99;
         const pB = ROLE_PRIORITY[b.role] ?? 99;
         if (pA !== pB) return pA - pB;
         return a.user.name.localeCompare(b.user.name);
       });
 
-      return updatedList;
+      return list;
     });
+
+    await publishBoardMemberEvent({
+      boardId,
+      action: 'synced',
+      affectedUserIds: allAffectedUserIds,
+    });
+
+    return updatedList;
   }
 }
 
