@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { hasPermission } from '@/lib/access';
 import { PERMISSIONS } from '@/modules/rbac/constants';
+import { publishListEvent } from './list-publisher';
 import type {
   ListDTO,
   CreateListInput,
@@ -215,7 +216,7 @@ export class ListService {
       },
     });
 
-    return {
+    const result: ListDTO = {
       id: list.id,
       boardId: list.boardId,
       title: list.title,
@@ -227,6 +228,16 @@ export class ListService {
       createdAt: list.createdAt.toISOString(),
       updatedAt: list.updatedAt.toISOString(),
     };
+
+    await publishListEvent({
+      type: 'list.created',
+      op: 'list.created',
+      boardId: list.boardId,
+      actorId: userId,
+      list: result,
+    });
+
+    return result;
   }
 
   /**
@@ -262,7 +273,7 @@ export class ListService {
       },
     });
 
-    return {
+    const result: ListDTO = {
       id: updated.id,
       boardId: updated.boardId,
       title: updated.title,
@@ -274,6 +285,16 @@ export class ListService {
       createdAt: updated.createdAt.toISOString(),
       updatedAt: updated.updatedAt.toISOString(),
     };
+
+    await publishListEvent({
+      type: 'list.updated',
+      op: 'list.updated',
+      boardId: updated.boardId,
+      actorId: userId,
+      list: result,
+    });
+
+    return result;
   }
 
   /**
@@ -296,6 +317,45 @@ export class ListService {
 
     await prisma.list.delete({
       where: { id: listId },
+    });
+
+    await publishListEvent({
+      type: 'list.deleted',
+      op: 'list.deleted',
+      boardId: existing.boardId,
+      actorId: userId,
+      listId,
+    });
+
+    return true;
+  }
+
+  /**
+   * Reorder lists in a board
+   */
+  async reorderLists(userId: number, boardId: number, orderedListIds: number[]): Promise<boolean> {
+    const access = await this.evaluateHybridAccess(userId, boardId);
+    if (!access.canUpdate) {
+      throw new Error('Forbidden. You do not have permission to reorder lists on this board.');
+    }
+
+    if (!orderedListIds.length) return true;
+
+    await prisma.$transaction(
+      orderedListIds.map((id, index) =>
+        prisma.list.update({
+          where: { id },
+          data: { position: (index + 1) * 65536 },
+        })
+      )
+    );
+
+    await publishListEvent({
+      type: 'list.reordered',
+      op: 'list.reordered',
+      boardId,
+      actorId: userId,
+      listIds: orderedListIds,
     });
 
     return true;

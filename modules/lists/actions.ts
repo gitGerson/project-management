@@ -111,3 +111,21 @@ export async function deleteListAction(listId: number): Promise<ActionResponse<b
   }
 }
 
+export async function reorderListsAction(
+  boardId: number,
+  orderedListIds: number[]
+): Promise<ActionResponse<boolean>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  try {
+    await listService.reorderLists(session.userId, boardId, orderedListIds);
+    return { success: true, data: true };
+  } catch (err) {
+    const error = err as Error;
+    return { success: false, message: error.message || 'Failed to reorder lists' };
+  }
+}
+

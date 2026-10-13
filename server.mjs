@@ -181,14 +181,26 @@ async function startRedisSubscription() {
       try {
         const payload = JSON.parse(message);
         const parts = channel.split(':');
+        const matchedRooms = new Set();
         if (parts.length >= 3) {
-          const roomKey = `${parts[1]}:${parts[2]}`;
+          matchedRooms.add(`${parts[1]}:${parts[2]}`); // e.g. "kanban:4" or "board:4"
+          matchedRooms.add(`${parts[0]}:${parts[1]}`); // e.g. "board:kanban"
+          matchedRooms.add(`${parts[0]}:${parts[2]}`); // e.g. "board:4"
+          matchedRooms.add(channel); // e.g. "board:kanban:4"
+        } else if (parts.length === 2) {
+          matchedRooms.add(channel);
+          matchedRooms.add(`${parts[0]}:${parts[1]}`);
+        }
+
+        const deliveredClients = new Set();
+        for (const roomKey of matchedRooms) {
           const clientSet = rooms.get(roomKey);
-          console.log(`[Redis] Received ${channel} (${payload.type}), delivering to room "${roomKey}". Subscribers: ${clientSet ? clientSet.size : 0}`);
-          if (clientSet) {
+          if (clientSet && clientSet.size > 0) {
+            console.log(`[Redis] Received ${channel} (${payload.type || payload.op || 'event'}), delivering to room "${roomKey}". Subscribers: ${clientSet.size}`);
             const outgoing = JSON.stringify(payload);
             for (const client of clientSet) {
-              if (client.readyState === WebSocket.OPEN) {
+              if (client.readyState === WebSocket.OPEN && !deliveredClients.has(client)) {
+                deliveredClients.add(client);
                 client.send(outgoing);
               }
             }

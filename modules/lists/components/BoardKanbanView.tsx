@@ -9,6 +9,7 @@ import {
   updateListAction,
   deleteListAction,
 } from '../actions';
+import { useRealtimeLists } from '../hooks/useRealtimeLists';
 import { Layers } from 'lucide-react';
 
 interface BoardKanbanViewProps {
@@ -24,10 +25,59 @@ export function BoardKanbanView({
 }: BoardKanbanViewProps) {
   const [lists, setLists] = useState<ListDTO[]>(initialLists);
 
+  // Real-time synchronization for Kanban lists across all members
+  useRealtimeLists(boardId, {
+    onListCreated: (newList) => {
+      setLists((prev) => {
+        if (prev.some((l) => l.id === newList.id)) {
+          return prev.map((l) => (l.id === newList.id ? { ...l, ...newList } : l));
+        }
+        return [...prev, newList].sort((a, b) => a.position - b.position);
+      });
+    },
+    onListUpdated: (updatedList) => {
+      setLists((prev) =>
+        prev.map((l) =>
+          l.id === updatedList.id ? { ...l, ...updatedList } : l
+        )
+      );
+    },
+    onListDeleted: (deletedListId) => {
+      setLists((prev) => prev.filter((l) => l.id !== deletedListId));
+    },
+    onListsReordered: (orderedListIds) => {
+      setLists((prev) => {
+        const map = new Map(prev.map((l) => [l.id, l]));
+        const reordered = orderedListIds
+          .map((id) => map.get(id))
+          .filter(Boolean) as ListDTO[];
+        const remainder = prev.filter((l) => !orderedListIds.includes(l.id));
+        return [...reordered, ...remainder];
+      });
+    },
+  });
+
+  // Sync initialLists when changed from parent without losing local updates
+  React.useEffect(() => {
+    setLists((prev) => {
+      const map = new Map<number, ListDTO>();
+      for (const l of initialLists) map.set(l.id, l);
+      for (const l of prev) {
+        if (!map.has(l.id)) map.set(l.id, l);
+      }
+      return Array.from(map.values()).sort((a, b) => a.position - b.position);
+    });
+  }, [initialLists]);
+
   const handleCreateList = async (title: string): Promise<boolean> => {
     const res = await createListAction({ boardId, title });
     if (res.success && res.data) {
-      setLists((prev) => [...prev, res.data!]);
+      setLists((prev) => {
+        if (prev.some((l) => l.id === res.data!.id)) {
+          return prev.map((l) => (l.id === res.data!.id ? { ...l, ...res.data! } : l));
+        }
+        return [...prev, res.data!].sort((a, b) => a.position - b.position);
+      });
       return true;
     }
     alert(res.message || 'Failed to create list');
@@ -63,13 +113,23 @@ export function BoardKanbanView({
     return true;
   };
 
+  // Deduplicate lists by ID to guarantee unique React keys under any concurrent updates
+  const uniqueLists = React.useMemo(() => {
+    const seen = new Set<number>();
+    return lists.filter((list) => {
+      if (seen.has(list.id)) return false;
+      seen.add(list.id);
+      return true;
+    });
+  }, [lists]);
+
   return (
     <div
       className="flex-1 w-full overflow-x-auto p-4 sm:p-6 flex items-start gap-4 scrollbar-thin select-none"
       aria-label="Kanban board lists"
     >
       {/* Existing Lists */}
-      {lists.map((list) => (
+      {uniqueLists.map((list) => (
         <BoardColumn
           key={list.id}
           list={list}

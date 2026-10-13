@@ -25,9 +25,29 @@ class RealtimeChatManager {
   private pingInterval: NodeJS.Timeout | null = null;
 
   private roomListeners = new Map<string, Set<CommentHandler>>();
+  private rawRoomListeners = new Map<string, Set<(data: any) => void>>();
   private refreshListeners = new Set<RefreshHandler>();
   private boardMembersListeners = new Set<BoardMembersUpdatedHandler>();
   private statusListeners = new Set<StatusHandler>();
+
+  public subscribeRawRoom(room: string, handler: (data: any) => void): () => void {
+    if (!this.rawRoomListeners.has(room)) {
+      this.rawRoomListeners.set(room, new Set());
+      this.send({ type: 'subscribe', room });
+    }
+    this.rawRoomListeners.get(room)!.add(handler);
+
+    return () => {
+      const set = this.rawRoomListeners.get(room);
+      if (set) {
+        set.delete(handler);
+        if (set.size === 0) {
+          this.rawRoomListeners.delete(room);
+          this.send({ type: 'unsubscribe', room });
+        }
+      }
+    };
+  }
 
   public subscribeRoom(room: string, handler: CommentHandler): () => void {
     if (!this.roomListeners.has(room)) {
@@ -126,6 +146,9 @@ class RealtimeChatManager {
         for (const room of this.roomListeners.keys()) {
           this.send({ type: 'subscribe', room });
         }
+        for (const room of this.rawRoomListeners.keys()) {
+          this.send({ type: 'subscribe', room });
+        }
 
         // Heartbeat ping every 25s
         if (this.pingInterval) clearInterval(this.pingInterval);
@@ -137,6 +160,23 @@ class RealtimeChatManager {
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+
+          // Deliver to raw room listeners (e.g. kanban board updates)
+          if (data.boardId) {
+            const kanbanListeners = this.rawRoomListeners.get(`kanban:${data.boardId}`);
+            if (kanbanListeners) {
+              for (const handler of kanbanListeners) {
+                handler(data);
+              }
+            }
+            const boardListeners = this.rawRoomListeners.get(`board:${data.boardId}`);
+            if (boardListeners) {
+              for (const handler of boardListeners) {
+                handler(data);
+              }
+            }
+          }
+
           if (
             (data.type === 'chat.message.created' || data.type === 'comment.created') &&
             data.comment
@@ -287,3 +327,6 @@ export function useRealtimeChat(options: UseRealtimeChatOptions = {}) {
     isConnected,
   };
 }
+
+export { chatManager as realtimeClient };
+
