@@ -9,7 +9,9 @@ import { boardMemberService } from '@/modules/board-members/services/board-membe
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import { ChatProvider, ChatDrawer } from '@/modules/chat';
 import { BoardDetailHeader } from '@/modules/boards/components/BoardDetailHeader';
-import { listService, BoardKanbanView } from '@/modules/lists';
+import { listService } from '@/modules/lists/services/list.service';
+import { BoardKanbanView } from '@/modules/lists';
+import { cardService } from '@/modules/cards/services/card.service';
 
 export const instant = false;
 
@@ -68,10 +70,12 @@ export default async function BoardDetailPage({ params }: BoardPageProps) {
     );
   }
 
-  const [members, lists, listPermissions] = await Promise.all([
+  const [members, lists, listPermissions, cards, cardPermissions] = await Promise.all([
     boardMemberService.listMembersByBoardId(board.id),
     listService.getListsByBoardId(board.id, session.userId),
     listService.getBoardListPermissions(session.userId, board.id),
+    cardService.getCardsByBoardId(board.id, session.userId),
+    cardService.getBoardCardPermissions(session.userId, board.id),
   ]);
 
   const canEdit =
@@ -101,6 +105,8 @@ export default async function BoardDetailPage({ params }: BoardPageProps) {
             boardId={board.id}
             initialLists={lists}
             permissions={listPermissions}
+            initialCards={cards}
+            cardPermissions={cardPermissions}
           />
         </main>
 

@@ -12,36 +12,57 @@ import {
   ArrowLeft,
   ArrowRight,
 } from 'lucide-react';
+import { useDroppable } from '@dnd-kit/core';
 import {
   useSortable,
   defaultAnimateLayoutChanges,
   AnimateLayoutChanges,
+  SortableContext,
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ListDTO } from '../types';
+import type { CardDTO, CardPermissionsDTO } from '@/modules/cards';
+import { KanbanCard, CreateCardInlineForm } from '@/modules/cards';
 
 const animateLayoutChanges: AnimateLayoutChanges = (args) =>
   args.wasDragging ? false : defaultAnimateLayoutChanges(args);
 
 interface BoardColumnProps {
   list: ListDTO;
+  cards?: CardDTO[];
   canUpdate: boolean;
   canDelete: boolean;
+  cardPermissions?: CardPermissionsDTO;
   onUpdateTitle: (listId: number, newTitle: string) => Promise<boolean>;
   onDeleteList: (listId: number) => Promise<boolean>;
   onMoveLeft?: () => void;
   onMoveRight?: () => void;
+  onCreateCard?: (listId: number, title: string) => Promise<boolean>;
+  onUpdateCardTitle?: (cardId: number, newTitle: string) => Promise<boolean>;
+  onDeleteCard?: (cardId: number) => Promise<boolean>;
+  onMoveCardUp?: (cardId: number) => void;
+  onMoveCardDown?: (cardId: number) => void;
+  isDraggingCard?: boolean;
   isOverlay?: boolean;
 }
 
 export function BoardColumn({
   list,
+  cards = [],
   canUpdate,
   canDelete,
+  cardPermissions,
   onUpdateTitle,
   onDeleteList,
   onMoveLeft,
   onMoveRight,
+  onCreateCard,
+  onUpdateCardTitle,
+  onDeleteCard,
+  onMoveCardUp,
+  onMoveCardDown,
+  isDraggingCard = false,
   isOverlay = false,
 }: BoardColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -119,9 +140,33 @@ export function BoardColumn({
     transition,
     isDragging,
   } = useSortable({
-    id: list.id,
+    id: `list-${list.id}`,
     disabled: !canUpdate || isOverlay,
     animateLayoutChanges,
+    data: {
+      type: 'column',
+      list,
+    },
+  });
+
+  // Droppable container for the cards scroll body
+  const { setNodeRef: setCardsContainerRef, isOver: isOverContainer } = useDroppable({
+    id: `list-cards-${list.id}`,
+    data: {
+      type: 'card-container',
+      listId: list.id,
+    },
+    disabled: isOverlay,
+  });
+
+  // Droppable target for explicit drop at the bottom of the list
+  const { setNodeRef: setBottomDropRef, isOver: isOverBottom } = useDroppable({
+    id: `list-bottom-${list.id}`,
+    data: {
+      type: 'list-bottom',
+      listId: list.id,
+    },
+    disabled: isOverlay,
   });
 
   const style: React.CSSProperties = {
@@ -144,7 +189,7 @@ export function BoardColumn({
           <div
             {...attributes}
             {...listeners}
-            className={`p-1 -ml-1 text-gray-400 hover:text-gray-600 rounded-md transition-colors ${
+            className={`p-1.5 -ml-1 text-gray-400 hover:text-gray-600 rounded-lg transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center ${
               canUpdate && !isOverlay
                 ? 'cursor-grab active:cursor-grabbing touch-none'
                 : 'cursor-default'
@@ -152,10 +197,14 @@ export function BoardColumn({
             title={canUpdate ? 'Drag to reorder column' : undefined}
             aria-label="Drag column handle"
           >
-            <GripVertical className="w-3.5 h-3.5 shrink-0" />
+            <GripVertical className="w-4 h-4 shrink-0" />
           </div>
 
-          <div className="flex-1 min-w-0">
+          <div
+            className="flex-1 min-w-0"
+            onTouchStart={(e) => isEditingTitle && e.stopPropagation()}
+            onPointerDown={(e) => isEditingTitle && e.stopPropagation()}
+          >
             {isEditingTitle && canUpdate ? (
               <div className="flex items-center gap-1.5">
                 <input
@@ -201,11 +250,16 @@ export function BoardColumn({
         {/* Header Right: Card count badge & Actions Dropdown */}
         <div className="flex items-center gap-1.5 shrink-0">
           <span className="px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 rounded-full border border-emerald-200/50">
-            0
+            {cards.length}
           </span>
 
           {(canUpdate || canDelete) && (
-            <div className="relative shrink-0" ref={menuRef}>
+            <div
+              className="relative shrink-0"
+              ref={menuRef}
+              onTouchStart={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
               <button
                 type="button"
                 onClick={() => {
@@ -310,24 +364,73 @@ export function BoardColumn({
       </div>
 
       {/* Add Card Top Action Button (Positioned below header, before cards) */}
-      <div className="p-2.5 pb-1 shrink-0">
-        <button
-          type="button"
-          disabled
-          className="w-full py-1.5 px-3 text-xs text-gray-400 font-medium hover:text-gray-600 hover:bg-gray-50 border border-dashed border-gray-200/90 hover:border-gray-300 rounded-xl flex items-center justify-center gap-1.5 transition cursor-not-allowed opacity-80"
-          title="Cards feature will be added in the next step"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add card</span>
-        </button>
-      </div>
-
-      {/* Cards List Body (Scrollable) */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-[100px] max-h-[calc(100vh-230px)]">
-        <div className="border border-dashed border-gray-200 rounded-xl p-4 text-center text-gray-400">
-          <Layers className="w-4 h-4 mx-auto mb-1 text-gray-300" />
-          <p className="text-[11px] text-gray-400">No cards in this list</p>
+      {cardPermissions?.canCreate && onCreateCard && !isOverlay && (
+        <div className="p-2.5 pb-1 shrink-0">
+          <CreateCardInlineForm
+            listId={list.id}
+            onCreateCard={(title) => onCreateCard(list.id, title)}
+          />
         </div>
+      )}
+
+      {/* Cards List Body (Scrollable & Droppable) */}
+      <div
+        ref={setCardsContainerRef}
+        className={`flex-1 overflow-y-auto p-3 space-y-2.5 min-h-[120px] max-h-[calc(100vh-230px)] scrollbar-thin transition-colors rounded-b-2xl ${
+          isOverContainer && !isOverBottom ? 'bg-emerald-50/20' : ''
+        }`}
+      >
+        <SortableContext
+          items={cards.map((c) => `card-${c.id}`)}
+          strategy={verticalListSortingStrategy}
+        >
+          {cards.map((card, cardIndex) => (
+            <KanbanCard
+              key={card.id}
+              card={card}
+              canUpdate={Boolean(cardPermissions?.canUpdate)}
+              canDelete={Boolean(cardPermissions?.canDelete)}
+              onUpdateTitle={(cardId, title) =>
+                onUpdateCardTitle ? onUpdateCardTitle(cardId, title) : Promise.resolve(false)
+              }
+              onDeleteCard={(cardId) =>
+                onDeleteCard ? onDeleteCard(cardId) : Promise.resolve(false)
+              }
+              onMoveUp={
+                cardPermissions?.canUpdate && cardIndex > 0 && onMoveCardUp
+                  ? () => onMoveCardUp(card.id)
+                  : undefined
+              }
+              onMoveDown={
+                cardPermissions?.canUpdate && cardIndex < cards.length - 1 && onMoveCardDown
+                  ? () => onMoveCardDown(card.id)
+                  : undefined
+              }
+            />
+          ))}
+        </SortableContext>
+
+        {/* Dedicated drop zone slot at the bottom of the column */}
+        {isDraggingCard && !isOverlay && (
+          <div
+            ref={setBottomDropRef}
+            className={`w-full py-3.5 px-3 border-2 border-dashed rounded-xl flex items-center justify-center text-xs font-semibold transition-all select-none ${
+              isOverBottom
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-xs scale-[1.01]'
+                : 'border-gray-200/90 bg-gray-50/40 text-gray-400 hover:border-gray-300'
+            }`}
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Drop card here
+          </div>
+        )}
+
+        {cards.length === 0 && !isDraggingCard && (
+          <div className="border border-dashed border-gray-200 rounded-xl p-4 text-center text-gray-400">
+            <Layers className="w-4 h-4 mx-auto mb-1 text-gray-300" />
+            <p className="text-[11px] text-gray-400">No cards in this list</p>
+          </div>
+        )}
       </div>
     </div>
   );

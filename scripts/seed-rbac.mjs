@@ -27,6 +27,12 @@ const PERMISSIONS = [
   { name: 'lists.update', description: 'Update list titles and positions' },
   { name: 'lists.delete', description: 'Delete lists from boards' },
 
+  // Card permissions
+  { name: 'cards.create', description: 'Create new cards in board lists' },
+  { name: 'cards.read', description: 'View cards in accessible board lists' },
+  { name: 'cards.update', description: 'Update and reorder cards in board lists' },
+  { name: 'cards.delete', description: 'Delete cards from board lists' },
+
   // Management permissions
   { name: 'users.read', description: 'View users list and profiles' },
   { name: 'users.manage', description: 'Manage users and role assignments' },
@@ -41,7 +47,7 @@ const ROLES = [
   },
   {
     name: 'admin',
-    description: 'Board administrator with full board & list CRUD, view all, and user viewing',
+    description: 'Board administrator with full board, list & card CRUD, view all, and user viewing',
     permissions: [
       'boards.create',
       'boards.read',
@@ -52,12 +58,16 @@ const ROLES = [
       'lists.read',
       'lists.update',
       'lists.delete',
+      'cards.create',
+      'cards.read',
+      'cards.update',
+      'cards.delete',
       'users.read',
     ],
   },
   {
     name: 'member',
-    description: 'Standard member with ability to create, read, and edit boards and lists',
+    description: 'Standard member with ability to create, read, and edit boards, lists, and cards',
     permissions: [
       'boards.create',
       'boards.read',
@@ -65,12 +75,16 @@ const ROLES = [
       'lists.create',
       'lists.read',
       'lists.update',
+      'cards.create',
+      'cards.read',
+      'cards.update',
+      'cards.delete',
     ],
   },
   {
     name: 'viewer',
-    description: 'Read-only access to boards and lists',
-    permissions: ['boards.read', 'lists.read'],
+    description: 'Read-only access to boards, lists, and cards',
+    permissions: ['boards.read', 'lists.read', 'cards.read'],
   },
 ];
 
