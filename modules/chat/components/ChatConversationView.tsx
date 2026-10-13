@@ -247,15 +247,26 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
           </button>
 
           {group.image && !headerImgError ? (
-            <Image
-              src={group.image}
-              alt={group.title}
-              width={36}
-              height={36}
-              unoptimized
-              onError={() => setHeaderImgError(true)}
-              className="w-9 h-9 rounded-xl object-cover border border-gray-200 shrink-0"
-            />
+            group.image.startsWith('gradient:') ? (
+              <div
+                className={`w-9 h-9 rounded-xl ${group.image.replace(
+                  'gradient:',
+                  ''
+                )} flex items-center justify-center text-white shadow-xs shrink-0`}
+              >
+                <Layout className="w-4 h-4 text-white/90" />
+              </div>
+            ) : (
+              <Image
+                src={group.image}
+                alt={group.title}
+                width={36}
+                height={36}
+                unoptimized
+                onError={() => setHeaderImgError(true)}
+                className="w-9 h-9 rounded-xl object-cover border border-gray-200 shrink-0"
+              />
+            )
           ) : (
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#15803d] flex items-center justify-center border border-emerald-100 shrink-0">
               <Layout className="w-4 h-4 text-[#15803d]" />

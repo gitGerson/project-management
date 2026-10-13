@@ -73,7 +73,7 @@ export function Header({ user, pinnedBoards = [] }: HeaderProps) {
               width={112}
               height={42}
               className="h-9 w-auto object-contain"
-              style={{ width: 'auto' }}
+              style={{ width: 'auto', height: 'auto' }}
               priority
             />
           </Link>

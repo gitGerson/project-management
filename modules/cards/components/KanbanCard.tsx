@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   useSortable,
   defaultAnimateLayoutChanges,
@@ -47,9 +48,20 @@ export function KanbanCard({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isConfirmDelete, setIsConfirmDelete] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [menuCoords, setMenuCoords] = useState<{
+    top: number;
+    left: number;
+    placeAbove?: boolean;
+  } | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isEditingTitle && inputRef.current) {
@@ -58,9 +70,49 @@ export function KanbanCard({
     }
   }, [isEditingTitle]);
 
+  const updateCoords = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const menuWidth = 144; // w-36 = 144px
+    const estimatedHeight = 150;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const placeAbove = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
+
+    setMenuCoords({
+      top: placeAbove ? rect.top - 4 : rect.bottom + 4,
+      left: Math.max(8, rect.right - menuWidth),
+      placeAbove,
+    });
+  }, []);
+
+  // Update coords and attach scroll/resize listeners when menu opens
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    updateCoords();
+
+    const handleScrollOrResize = () => {
+      setIsMenuOpen(false);
+      setIsConfirmDelete(false);
+    };
+
+    window.addEventListener('resize', handleScrollOrResize);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+
+    return () => {
+      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+    };
+  }, [isMenuOpen, updateCoords]);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(target)
+      ) {
         setIsMenuOpen(false);
         setIsConfirmDelete(false);
       }
@@ -194,14 +246,15 @@ export function KanbanCard({
         {(canUpdate || canDelete) && !isOverlay && (
           <div
             className="relative shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-            ref={menuRef}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
             <button
+              ref={buttonRef}
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setIsMenuOpen((prev) => !prev);
                 setIsConfirmDelete(false);
               }}
@@ -212,91 +265,110 @@ export function KanbanCard({
               <MoreHorizontal className="w-3.5 h-3.5" />
             </button>
 
-            {isMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-200/90 rounded-xl shadow-lg p-1 z-30 text-xs text-gray-700 animate-in fade-in duration-150">
-                {canUpdate && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      setTitleInput(card.title);
-                      setIsEditingTitle(true);
-                    }}
-                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700"
-                  >
-                    <Pencil className="w-3.5 h-3.5 text-gray-400" />
-                    <span>Rename</span>
-                  </button>
-                )}
+            {isMenuOpen &&
+              menuCoords &&
+              isMounted &&
+              typeof document !== 'undefined' &&
+              createPortal(
+                <div
+                  ref={menuRef}
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  style={{
+                    position: 'fixed',
+                    top: menuCoords.placeAbove ? 'auto' : `${menuCoords.top}px`,
+                    bottom: menuCoords.placeAbove
+                      ? `${window.innerHeight - menuCoords.top}px`
+                      : 'auto',
+                    left: `${menuCoords.left}px`,
+                  }}
+                  className="w-36 bg-white border border-gray-200/90 rounded-xl shadow-xl p-1 z-50 text-xs text-gray-700 animate-in fade-in duration-150 select-none"
+                >
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setTitleInput(card.title);
+                        setIsEditingTitle(true);
+                      }}
+                      className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700"
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Rename</span>
+                    </button>
+                  )}
 
-                {canUpdate && onMoveUp && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onMoveUp();
-                    }}
-                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700"
-                  >
-                    <ArrowUp className="w-3.5 h-3.5 text-gray-400" />
-                    <span>Move Up</span>
-                  </button>
-                )}
+                  {canUpdate && onMoveUp && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onMoveUp();
+                      }}
+                      className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Move Up</span>
+                    </button>
+                  )}
 
-                {canUpdate && onMoveDown && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onMoveDown();
-                    }}
-                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700"
-                  >
-                    <ArrowDown className="w-3.5 h-3.5 text-gray-400" />
-                    <span>Move Down</span>
-                  </button>
-                )}
+                  {canUpdate && onMoveDown && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onMoveDown();
+                      }}
+                      className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Move Down</span>
+                    </button>
+                  )}
 
-                {canDelete && (
-                  <>
-                    <div className="h-px bg-gray-100 my-1" />
-                    {isConfirmDelete ? (
-                      <div className="p-1 text-center">
-                        <p className="text-[10px] text-red-600 font-semibold mb-1.5">
-                          Delete card?
-                        </p>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={handleDelete}
-                            disabled={isSubmitting}
-                            className="flex-1 py-0.5 px-1.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded text-[10px] transition cursor-pointer"
-                          >
-                            Yes
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsConfirmDelete(false)}
-                            className="flex-1 py-0.5 px-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded text-[10px] transition cursor-pointer"
-                          >
-                            No
-                          </button>
+                  {canDelete && (
+                    <>
+                      <div className="h-px bg-gray-100 my-1" />
+                      {isConfirmDelete ? (
+                        <div className="p-1 text-center">
+                          <p className="text-[10px] text-red-600 font-semibold mb-1.5">
+                            Delete card?
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={handleDelete}
+                              disabled={isSubmitting}
+                              className="flex-1 py-0.5 px-1.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded text-[10px] transition cursor-pointer"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsConfirmDelete(false)}
+                              className="flex-1 py-0.5 px-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded text-[10px] transition cursor-pointer"
+                            >
+                              No
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setIsConfirmDelete(true)}
-                        className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-red-50 text-red-600 flex items-center gap-2 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                        <span>Delete</span>
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsConfirmDelete(true)}
+                          className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-red-50 text-red-600 flex items-center gap-2 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                          <span>Delete</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>,
+                document.body
+              )}
           </div>
         )}
       </div>

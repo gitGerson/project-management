@@ -34,15 +34,26 @@ const ChatGroupRow: React.FC<{
       {/* Avatar / Icon with image support and fallback */}
       <div className="relative shrink-0">
         {group.image && !imgError ? (
-          <Image
-            src={group.image}
-            alt={group.title}
-            width={44}
-            height={44}
-            unoptimized
-            onError={() => setImgError(true)}
-            className="w-11 h-11 rounded-xl object-cover border border-gray-200"
-          />
+          group.image.startsWith('gradient:') ? (
+            <div
+              className={`w-11 h-11 rounded-xl ${group.image.replace(
+                'gradient:',
+                ''
+              )} flex items-center justify-center text-white shadow-xs`}
+            >
+              <Layout className="w-5 h-5 text-white/90" />
+            </div>
+          ) : (
+            <Image
+              src={group.image}
+              alt={group.title}
+              width={44}
+              height={44}
+              unoptimized
+              onError={() => setImgError(true)}
+              className="w-11 h-11 rounded-xl object-cover border border-gray-200"
+            />
+          )
         ) : (
           <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[#15803d] font-semibold text-sm">
             <Layout className="w-5 h-5 text-[#15803d]" />
