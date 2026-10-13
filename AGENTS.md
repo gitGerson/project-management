@@ -77,6 +77,16 @@ Preferred boundaries:
 - Keep components narrow and avoid putting domain rules in JSX. Forms use shared input schemas for client feedback, but server validation is mandatory.
 - Avoid redundant client fetching, duplicated server/client caches, premature global state, and over-engineered hooks.
 
+## Kanban Card Ordering and Fractional Indexing (docs/KANBAN_ORDERING.md)
+- **Algorithm & Library**: Use Rocicorp `fractional-indexing` (`generateKeyBetween`, `generateNKeysBetween`) for card ordering ranks (Base62 strings). Avoid integer renumbering (`1, 2, 3...`) and float midpoint exhaustion.
+- **Single-row mutation**: Ordinary drag-and-drop operations must mutate only the moved card (`rank`, `columnId` / `listId`, and `version: { increment: 1 }`).
+- **Intent-based move payload**: Client must send neighbor card IDs (`previousCardId`, `nextCardId`) rather than trusting a client-calculated rank.
+- **Authoritative server serialization**: Validate permissions and serialize concurrent moves per board (`SELECT ... FOR UPDATE` inside a MySQL transaction). In that protected transaction, load fresh neighbors, verify adjacency, generate the new rank, persist atomically, and commit before broadcasting.
+- **MySQL Collation Requirement**: The database `rank` column must use a binary/case-sensitive collation (`utf8mb4_bin`) to ensure MySQL character-by-character lexical comparison strictly matches the JavaScript library.
+- **Deterministic secondary sort**: Always query cards with `orderBy: [{ rank: 'asc' }, { id: 'asc' }]` as a tie fallback.
+- **Occasional rebalancing**: When rank string length grows (e.g. > 64 chars), trigger an exclusive column rebalance using `generateNKeysBetween`. Rebalancing is an occasional maintenance operation, never the default on every drag.
+- **Real-time synchronization**: Broadcast `card.moved` via Redis pub/sub and WebSocket server. Clients apply moves idempotently, discarding stale version payloads.
+
 ## Quality gates
 Before concluding, whenever tools and scripts exist:
 1. Relevant tests (unit/service and integration where useful).
