@@ -58,10 +58,9 @@ export class CommentService {
         id: true,
         name: true,
         image: true,
-        updatedAt: true,
       },
       orderBy: {
-        updatedAt: 'desc',
+        name: 'asc',
       },
     });
 
@@ -127,7 +126,7 @@ export class CommentService {
           new Date(c.createdAt).getTime() > lastRead.getTime()
       ).length;
 
-      const groupUpdatedAt = last ? last.createdAt.toISOString() : board.updatedAt.toISOString();
+      const groupUpdatedAt = last ? last.createdAt.toISOString() : null;
 
       let lastCommentSnippet = '';
       if (last) {
@@ -161,8 +160,17 @@ export class CommentService {
       });
     }
 
-    // Sort by most recent activity first
-    groups.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    // Sort exclusively by most recent comment activity (lastComment)
+    // Chats with comments appear first (newest to oldest); chats without comments follow (alphabetically by title)
+    groups.sort((a, b) => {
+      const timeA = a.lastComment ? new Date(a.lastComment.createdAt).getTime() : 0;
+      const timeB = b.lastComment ? new Date(b.lastComment.createdAt).getTime() : 0;
+
+      if (timeA !== timeB) {
+        return timeB - timeA;
+      }
+      return a.title.localeCompare(b.title);
+    });
 
     return groups;
   }

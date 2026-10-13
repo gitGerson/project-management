@@ -60,7 +60,7 @@ export interface ChatGroupDTO {
     createdAt: string;
   } | null;
   unreadCount: number;
-  updatedAt: string; // ISO 8601
+  updatedAt?: string | null;
 }
 
 export interface SendCommentInput {
