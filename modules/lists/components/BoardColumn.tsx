@@ -1,8 +1,27 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, Trash2, Pencil, Plus, Check, Layers, GripVertical } from 'lucide-react';
+import {
+  MoreHorizontal,
+  Trash2,
+  Pencil,
+  Plus,
+  Check,
+  Layers,
+  GripVertical,
+  ArrowLeft,
+  ArrowRight,
+} from 'lucide-react';
+import {
+  useSortable,
+  defaultAnimateLayoutChanges,
+  AnimateLayoutChanges,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { ListDTO } from '../types';
+
+const animateLayoutChanges: AnimateLayoutChanges = (args) =>
+  args.wasDragging ? false : defaultAnimateLayoutChanges(args);
 
 interface BoardColumnProps {
   list: ListDTO;
@@ -10,6 +29,9 @@ interface BoardColumnProps {
   canDelete: boolean;
   onUpdateTitle: (listId: number, newTitle: string) => Promise<boolean>;
   onDeleteList: (listId: number) => Promise<boolean>;
+  onMoveLeft?: () => void;
+  onMoveRight?: () => void;
+  isOverlay?: boolean;
 }
 
 export function BoardColumn({
@@ -18,6 +40,9 @@ export function BoardColumn({
   canDelete,
   onUpdateTitle,
   onDeleteList,
+  onMoveLeft,
+  onMoveRight,
+  isOverlay = false,
 }: BoardColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(list.title);
@@ -86,12 +111,50 @@ export function BoardColumn({
     setIsSubmitting(false);
   };
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: list.id,
+    disabled: !canUpdate || isOverlay,
+    animateLayoutChanges,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.35 : 1,
+  };
+
   return (
-    <div className="w-[280px] sm:w-[300px] shrink-0 bg-white rounded-2xl border border-gray-200/90 shadow-xs flex flex-col max-h-[calc(100vh-140px)] transition-all">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`w-[280px] sm:w-[300px] shrink-0 bg-white rounded-2xl border border-gray-200/90 shadow-xs flex flex-col max-h-[calc(100vh-140px)] ${
+        isOverlay ? 'shadow-2xl ring-2 ring-emerald-500/20' : ''
+      }`}
+    >
       {/* Column Header */}
       <div className="px-3.5 py-3 border-b border-gray-100 flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
-          <GripVertical className="w-3.5 h-3.5 text-gray-300 shrink-0 cursor-grab" />
+          <div
+            {...attributes}
+            {...listeners}
+            className={`p-1 -ml-1 text-gray-400 hover:text-gray-600 rounded-md transition-colors ${
+              canUpdate && !isOverlay
+                ? 'cursor-grab active:cursor-grabbing touch-none'
+                : 'cursor-default'
+            }`}
+            title={canUpdate ? 'Drag to reorder column' : undefined}
+            aria-label="Drag column handle"
+          >
+            <GripVertical className="w-3.5 h-3.5 shrink-0" />
+          </div>
+
           <div className="flex-1 min-w-0">
             {isEditingTitle && canUpdate ? (
               <div className="flex items-center gap-1.5">
@@ -170,6 +233,34 @@ export function BoardColumn({
                     >
                       <Pencil className="w-3.5 h-3.5 text-gray-400" />
                       <span>Rename List</span>
+                    </button>
+                  )}
+
+                  {canUpdate && onMoveLeft && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onMoveLeft();
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Move Left</span>
+                    </button>
+                  )}
+
+                  {canUpdate && onMoveRight && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onMoveRight();
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Move Right</span>
                     </button>
                   )}
 

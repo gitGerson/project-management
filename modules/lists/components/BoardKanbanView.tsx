@@ -1,6 +1,24 @@
 'use client';
 
 import React, { useState } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+  MeasuringStrategy,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+} from '@dnd-kit/sortable';
 import type { ListDTO, ListPermissionsDTO } from '../types';
 import { BoardColumn } from './BoardColumn';
 import { CreateListForm } from './CreateListForm';
@@ -8,6 +26,7 @@ import {
   createListAction,
   updateListAction,
   deleteListAction,
+  reorderListsAction,
 } from '../actions';
 import { useRealtimeLists } from '../hooks/useRealtimeLists';
 import { Layers } from 'lucide-react';
@@ -24,6 +43,19 @@ export function BoardKanbanView({
   permissions,
 }: BoardKanbanViewProps) {
   const [lists, setLists] = useState<ListDTO[]>(initialLists);
+  const [activeListId, setActiveListId] = useState<number | null>(null);
+
+  // Setup accessible dnd-kit sensors with 5px drag activation constraint
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Real-time synchronization for Kanban lists across all members
   useRealtimeLists(boardId, {
@@ -46,6 +78,8 @@ export function BoardKanbanView({
       setLists((prev) => prev.filter((l) => l.id !== deletedListId));
     },
     onListsReordered: (orderedListIds) => {
+      // While actively dragging, preserve the active user interaction to avoid jump under pointer
+      if (activeListId !== null) return;
       setLists((prev) => {
         const map = new Map(prev.map((l) => [l.id, l]));
         const reordered = orderedListIds
@@ -123,40 +157,137 @@ export function BoardKanbanView({
     });
   }, [lists]);
 
+  // Active list item for DragOverlay preview
+  const activeList = React.useMemo(
+    () => (activeListId ? uniqueLists.find((l) => l.id === activeListId) || null : null),
+    [activeListId, uniqueLists]
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveListId(Number(event.active.id));
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveListId(null);
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = uniqueLists.findIndex((l) => l.id === active.id);
+    const newIndex = uniqueLists.findIndex((l) => l.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+
+    const reordered = arrayMove(uniqueLists, oldIndex, newIndex);
+    // 1. Optimistic local update
+    setLists(reordered);
+
+    // 2. Persist to authoritative server transaction and broadcast
+    const newOrderedIds = reordered.map((l) => l.id);
+    const res = await reorderListsAction(boardId, newOrderedIds);
+    if (!res.success) {
+      alert(res.message || 'Failed to save column reordering');
+      setLists(initialLists);
+    }
+  };
+
+  // Accessible non-drag reordering action (Move Left / Move Right)
+  const handleMoveColumn = async (listId: number, direction: 'left' | 'right') => {
+    const currentIndex = uniqueLists.findIndex((l) => l.id === listId);
+    if (currentIndex === -1) return;
+    const targetIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= uniqueLists.length) return;
+
+    const reordered = arrayMove(uniqueLists, currentIndex, targetIndex);
+    setLists(reordered);
+
+    const newOrderedIds = reordered.map((l) => l.id);
+    const res = await reorderListsAction(boardId, newOrderedIds);
+    if (!res.success) {
+      alert(res.message || 'Failed to reorder columns');
+      setLists(initialLists);
+    }
+  };
+
   return (
-    <div
-      className="flex-1 w-full overflow-x-auto p-4 sm:p-6 flex items-start gap-4 scrollbar-thin select-none"
-      aria-label="Kanban board lists"
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveListId(null)}
+      measuring={{
+        droppable: {
+          strategy: MeasuringStrategy.Always,
+        },
+      }}
     >
-      {/* Existing Lists */}
-      {uniqueLists.map((list) => (
-        <BoardColumn
-          key={list.id}
-          list={list}
-          canUpdate={permissions.canUpdate}
-          canDelete={permissions.canDelete}
-          onUpdateTitle={handleUpdateTitle}
-          onDeleteList={handleDeleteList}
-        />
-      ))}
+      <SortableContext
+        items={uniqueLists.map((l) => l.id)}
+        strategy={horizontalListSortingStrategy}
+      >
+        <div
+          className="flex-1 w-full overflow-x-auto p-4 sm:p-6 flex items-start gap-4 scrollbar-thin select-none"
+          aria-label="Kanban board lists"
+        >
+          {/* Existing Lists */}
+          {uniqueLists.map((list, index) => (
+            <BoardColumn
+              key={list.id}
+              list={list}
+              canUpdate={permissions.canUpdate}
+              canDelete={permissions.canDelete}
+              onUpdateTitle={handleUpdateTitle}
+              onDeleteList={handleDeleteList}
+              onMoveLeft={
+                permissions.canUpdate && index > 0
+                  ? () => handleMoveColumn(list.id, 'left')
+                  : undefined
+              }
+              onMoveRight={
+                permissions.canUpdate && index < uniqueLists.length - 1
+                  ? () => handleMoveColumn(list.id, 'right')
+                  : undefined
+              }
+            />
+          ))}
 
-      {/* Add New List Form */}
-      {permissions.canCreate && (
-        <CreateListForm boardId={boardId} onCreateList={handleCreateList} />
-      )}
+          {/* Add New List Form */}
+          {permissions.canCreate && (
+            <CreateListForm boardId={boardId} onCreateList={handleCreateList} />
+          )}
 
-      {/* Empty State when no lists and cannot create */}
-      {lists.length === 0 && !permissions.canCreate && (
-        <div className="w-[300px] shrink-0 bg-white rounded-2xl border border-gray-200/90 p-8 text-center shadow-xs mx-auto my-12">
-          <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 mx-auto mb-3">
-            <Layers className="w-6 h-6 text-gray-400" />
-          </div>
-          <h3 className="text-sm font-bold text-gray-800">No lists available</h3>
-          <p className="text-xs text-gray-500 mt-1">
-            This board does not contain any lists yet.
-          </p>
+          {/* Empty State when no lists and cannot create */}
+          {lists.length === 0 && !permissions.canCreate && (
+            <div className="w-[300px] shrink-0 bg-white rounded-2xl border border-gray-200/90 p-8 text-center shadow-xs mx-auto my-12">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 mx-auto mb-3">
+                <Layers className="w-6 h-6 text-gray-400" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-800">No lists available</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                This board does not contain any lists yet.
+              </p>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </SortableContext>
+
+      {/* Accessible visual drag overlay */}
+      <DragOverlay dropAnimation={null}>
+        {activeList ? (
+          <div className="rotate-1 opacity-95 scale-102 pointer-events-none shadow-2xl">
+            <BoardColumn
+              list={activeList}
+              canUpdate={false}
+              canDelete={false}
+              onUpdateTitle={async () => false}
+              onDeleteList={async () => false}
+              isOverlay
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
+
