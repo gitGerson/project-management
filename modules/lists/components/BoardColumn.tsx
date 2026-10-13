@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, Trash2, Pencil, Plus, Check, Layers } from 'lucide-react';
+import { MoreHorizontal, Trash2, Pencil, Plus, Check, Layers, GripVertical } from 'lucide-react';
 import type { ListDTO } from '../types';
 
 interface BoardColumnProps {
@@ -90,144 +90,153 @@ export function BoardColumn({
     <div className="w-[280px] sm:w-[300px] shrink-0 bg-white rounded-2xl border border-gray-200/90 shadow-xs flex flex-col max-h-[calc(100vh-140px)] transition-all">
       {/* Column Header */}
       <div className="px-3.5 py-3 border-b border-gray-100 flex items-center justify-between gap-2 shrink-0">
-        <div className="flex-1 min-w-0">
-          {isEditingTitle && canUpdate ? (
-            <div className="flex items-center gap-1.5">
-              <input
-                ref={inputRef}
-                type="text"
-                value={titleInput}
-                onChange={(e) => setTitleInput(e.target.value)}
-                onBlur={handleSaveTitle}
-                onKeyDown={handleKeyDown}
-                disabled={isSubmitting}
-                className="w-full text-xs sm:text-sm font-bold text-gray-900 bg-gray-50 px-2 py-1 border border-emerald-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              <button
-                type="button"
-                onClick={handleSaveTitle}
-                className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md cursor-pointer"
-                title="Save title"
-              >
-                <Check className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ) : (
-            <h3
-              onClick={() => {
-                if (canUpdate) {
-                  setTitleInput(list.title);
-                  setIsEditingTitle(true);
-                }
-              }}
-              className={`text-xs sm:text-sm font-bold text-gray-800 truncate tracking-tight py-1 px-1 rounded-md transition-colors ${
-                canUpdate
-                  ? 'hover:bg-gray-100 cursor-pointer'
-                  : 'cursor-default'
-              }`}
-              title={canUpdate ? 'Click to rename' : list.title}
-            >
-              {list.title}
-            </h3>
-          )}
-        </div>
-
-        {/* Column Actions Dropdown */}
-        {(canUpdate || canDelete) && (
-          <div className="relative shrink-0" ref={menuRef}>
-            <button
-              type="button"
-              onClick={() => {
-                setIsMenuOpen((prev) => !prev);
-                setIsConfirmDelete(false);
-              }}
-              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-              aria-label="Column actions"
-              title="Column menu"
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </button>
-
-            {isMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200/90 rounded-xl shadow-lg p-1 z-30 text-xs text-gray-700 animate-in fade-in duration-150">
-                {canUpdate && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      setTitleInput(list.title);
-                      setIsEditingTitle(true);
-                    }}
-                    className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <Pencil className="w-3.5 h-3.5 text-gray-400" />
-                    <span>Rename List</span>
-                  </button>
-                )}
-
-                {canDelete && (
-                  <>
-                    <div className="h-px bg-gray-100 my-1" />
-                    {isConfirmDelete ? (
-                      <div className="p-1.5 text-center">
-                        <p className="text-[11px] text-red-600 font-semibold mb-2">
-                          Delete this list?
-                        </p>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={handleDelete}
-                            disabled={isSubmitting}
-                            className="flex-1 py-1 px-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md text-[10px] transition cursor-pointer"
-                          >
-                            Confirm
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsConfirmDelete(false)}
-                            className="flex-1 py-1 px-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-md text-[10px] transition cursor-pointer"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setIsConfirmDelete(true)}
-                        className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-red-50 text-red-600 flex items-center gap-2 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                        <span>Delete List</span>
-                      </button>
-                    )}
-                  </>
-                )}
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <GripVertical className="w-3.5 h-3.5 text-gray-300 shrink-0 cursor-grab" />
+          <div className="flex-1 min-w-0">
+            {isEditingTitle && canUpdate ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={titleInput}
+                  onChange={(e) => setTitleInput(e.target.value)}
+                  onBlur={handleSaveTitle}
+                  onKeyDown={handleKeyDown}
+                  disabled={isSubmitting}
+                  className="w-full text-xs sm:text-sm font-bold text-gray-900 bg-gray-50 px-2 py-1 border border-emerald-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveTitle}
+                  className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md cursor-pointer"
+                  title="Save title"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
               </div>
+            ) : (
+              <h3
+                onClick={() => {
+                  if (canUpdate) {
+                    setTitleInput(list.title);
+                    setIsEditingTitle(true);
+                  }
+                }}
+                className={`text-xs sm:text-sm font-bold text-gray-800 uppercase tracking-tight py-1 px-1 rounded-md transition-colors truncate ${
+                  canUpdate
+                    ? 'hover:bg-gray-100 cursor-pointer'
+                    : 'cursor-default'
+                }`}
+                title={canUpdate ? 'Click to rename' : list.title}
+              >
+                {list.title}
+              </h3>
             )}
           </div>
-        )}
+        </div>
+
+        {/* Header Right: Card count badge & Actions Dropdown */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 rounded-full border border-emerald-200/50">
+            0
+          </span>
+
+          {(canUpdate || canDelete) && (
+            <div className="relative shrink-0" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen((prev) => !prev);
+                  setIsConfirmDelete(false);
+                }}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                aria-label="Column actions"
+                title="Column menu"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+
+              {isMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200/90 rounded-xl shadow-lg p-1 z-30 text-xs text-gray-700 animate-in fade-in duration-150">
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setTitleInput(list.title);
+                        setIsEditingTitle(true);
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Rename List</span>
+                    </button>
+                  )}
+
+                  {canDelete && (
+                    <>
+                      <div className="h-px bg-gray-100 my-1" />
+                      {isConfirmDelete ? (
+                        <div className="p-1.5 text-center">
+                          <p className="text-[11px] text-red-600 font-semibold mb-2">
+                            Delete this list?
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={handleDelete}
+                              disabled={isSubmitting}
+                              className="flex-1 py-1 px-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md text-[10px] transition cursor-pointer"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsConfirmDelete(false)}
+                              className="flex-1 py-1 px-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-md text-[10px] transition cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsConfirmDelete(true)}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-red-50 text-red-600 flex items-center gap-2 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                          <span>Delete List</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Cards List Body (Prepared for Cards) */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-[100px] max-h-[calc(100vh-250px)]">
+      {/* Add Card Top Action Button (Positioned below header, before cards) */}
+      <div className="p-2.5 pb-1 shrink-0">
+        <button
+          type="button"
+          disabled
+          className="w-full py-1.5 px-3 text-xs text-gray-400 font-medium hover:text-gray-600 hover:bg-gray-50 border border-dashed border-gray-200/90 hover:border-gray-300 rounded-xl flex items-center justify-center gap-1.5 transition cursor-not-allowed opacity-80"
+          title="Cards feature will be added in the next step"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Add card</span>
+        </button>
+      </div>
+
+      {/* Cards List Body (Scrollable) */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-[100px] max-h-[calc(100vh-230px)]">
         <div className="border border-dashed border-gray-200 rounded-xl p-4 text-center text-gray-400">
           <Layers className="w-4 h-4 mx-auto mb-1 text-gray-300" />
           <p className="text-[11px] text-gray-400">No cards in this list</p>
         </div>
-      </div>
-
-      {/* Column Footer: Prompt for upcoming card creation */}
-      <div className="p-2 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
-        <button
-          type="button"
-          disabled
-          className="w-full py-1.5 px-3 text-xs text-gray-400 font-medium hover:text-gray-600 hover:bg-gray-100 rounded-xl flex items-center gap-1.5 transition cursor-not-allowed opacity-75"
-          title="Cards feature will be added in the next step"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add a card</span>
-        </button>
       </div>
     </div>
   );
