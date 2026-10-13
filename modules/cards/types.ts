@@ -5,6 +5,13 @@ export interface CardOwnerDTO {
   profilePicture: string | null;
 }
 
+export interface LabelDTO {
+  id: number;
+  boardId: number;
+  title: string | null;
+  color: string | null;
+}
+
 export interface CardDTO {
   id: number;
   boardId: number;
@@ -19,6 +26,23 @@ export interface CardDTO {
   createdAt: string;
   updatedAt: string;
   owner?: CardOwnerDTO;
+  labels?: LabelDTO[];
+}
+
+export interface CreateLabelInput {
+  boardId: number;
+  title?: string | null;
+  color?: string | null;
+}
+
+export interface UpdateLabelInput {
+  title?: string | null;
+  color?: string | null;
+}
+
+export interface ToggleCardLabelInput {
+  cardId: number;
+  labelId: number;
 }
 
 export interface CreateCardInput {

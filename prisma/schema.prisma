@@ -41,6 +41,7 @@ model Board {
   pinnedByUsers UserPinnedBoard[]
   lists       List[]
   cards       Card[]
+  labels      Label[]
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -83,6 +84,7 @@ model Card {
   board       Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
   list        List      @relation(fields: [listId], references: [id], onDelete: Cascade)
   owner       User      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  cardLabels  CardLabel[]
 
   @@index([listId, rank], name: "cards_list_id_rank_idx")
   @@index([listId, sortOrder], name: "cards_list_id_sort_order_idx")
@@ -196,5 +198,33 @@ model RolePermission {
 
   @@id([roleId, permissionId])
   @@map("role_permissions")
+}
+
+model Label {
+  id        Int         @id @default(autoincrement())
+  boardId   Int         @map("board_id")
+  title     String?     @db.VarChar(100)
+  color     String?     @db.VarChar(30)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  board      Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cardLabels CardLabel[]
+
+  @@index([boardId], name: "labels_board_id_idx")
+  @@map("labels")
+}
+
+model CardLabel {
+  cardId    Int      @map("card_id")
+  labelId   Int      @map("label_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  label     Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, labelId])
+  @@index([labelId], name: "card_labels_label_id_idx")
+  @@map("card_labels")
 }
 

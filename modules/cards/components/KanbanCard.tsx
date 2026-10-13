@@ -19,6 +19,7 @@ import {
   Eye,
 } from 'lucide-react';
 import type { CardDTO } from '../types';
+import { getContrastTextColor } from '../utils/color-contrast';
 
 const animateLayoutChanges: AnimateLayoutChanges = (args) =>
   args.wasDragging ? false : defaultAnimateLayoutChanges(args);
@@ -208,6 +209,32 @@ export function KanbanCard({
         isOverlay ? 'shadow-xl ring-2 ring-emerald-500/20 rotate-1 cursor-grabbing' : ''
       }`}
     >
+      {/* Card Labels (Pills) */}
+      {card.labels && card.labels.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {card.labels.map((lbl) => {
+            const textColor = getContrastTextColor(lbl.color);
+            return (
+              <span
+                key={lbl.id}
+                style={{
+                  backgroundColor: lbl.color || '#f1f5f9',
+                  color: textColor,
+                }}
+                className={`inline-flex items-center rounded-md font-bold shadow-2xs tracking-tight truncate max-w-full ${
+                  !lbl.color ? 'border border-gray-300' : ''
+                } ${
+                  lbl.title ? 'h-4.5 px-2 text-[10px]' : 'h-2 w-8 rounded-full'
+                }`}
+                title={lbl.title || 'Label'}
+              >
+                {lbl.title || ''}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-2">
         {/* Card Title or Inline Title Edit */}
         <div

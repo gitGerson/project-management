@@ -599,6 +599,17 @@ export function BoardKanbanView({
     return true;
   };
 
+  const handleCardUpdated = (updated: CardDTO) => {
+    setItems((prev) => {
+      const next = { ...prev };
+      for (const lId in next) {
+        next[lId] = next[lId].map((c) => (c.id === updated.id ? updated : c));
+      }
+      itemsRef.current = next;
+      return next;
+    });
+  };
+
   const handleUpdateCardDetails = async (
     cardId: number,
     input: UpdateCardInput
@@ -606,14 +617,7 @@ export function BoardKanbanView({
     const res = await updateCardAction(cardId, input);
     if (res.success && res.data) {
       const updated = res.data;
-      setItems((prev) => {
-        const next = { ...prev };
-        for (const lId in next) {
-          next[lId] = next[lId].map((c) => (c.id === updated.id ? updated : c));
-        }
-        itemsRef.current = next;
-        return next;
-      });
+      handleCardUpdated(updated);
       return true;
     } else {
       alert(res.message || 'Gagal memperbarui kartu');
@@ -1093,6 +1097,7 @@ export function BoardKanbanView({
             return success;
           }}
           onMoveCardToList={handleMoveCardToListFromModal}
+          onCardUpdated={handleCardUpdated}
         />
       )}
     </DndContext>

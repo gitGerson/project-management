@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import type { CardDTO, UpdateCardInput } from '../types';
 import type { ListDTO } from '@/modules/lists/types';
 import { CardCommentsSection } from './CardCommentsSection';
+import { CardLabelPicker } from './CardLabelPicker';
 import {
   X,
   AlignLeft,
@@ -33,6 +34,7 @@ interface CardDetailModalProps {
   onUpdateCard: (cardId: number, input: UpdateCardInput) => Promise<boolean>;
   onDeleteCard: (cardId: number) => Promise<boolean>;
   onMoveCardToList?: (cardId: number, targetListId: number) => Promise<boolean>;
+  onCardUpdated?: (updatedCard: CardDTO) => void;
 }
 
 export const CardDetailModal: React.FC<CardDetailModalProps> = ({
@@ -47,6 +49,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
   onUpdateCard,
   onDeleteCard,
   onMoveCardToList,
+  onCardUpdated,
 }) => {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
@@ -535,6 +538,13 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Labels Section (Matching User Reference) */}
+            <CardLabelPicker
+              card={card}
+              canUpdate={canUpdate}
+              onCardUpdated={(updated) => onCardUpdated?.(updated)}
+            />
 
             {/* Description Section */}
             <div className="flex-1 flex flex-col">

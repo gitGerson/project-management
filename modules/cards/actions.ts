@@ -2,11 +2,17 @@
 
 import { getSession } from '@/lib/auth';
 import { cardService } from './services/card.service';
+import { labelService } from './services/label.service';
 import {
   createCardSchema,
   updateCardSchema,
   moveCardSchema,
 } from './schemas/card.schema';
+import {
+  createLabelSchema,
+  updateLabelSchema,
+  toggleCardLabelSchema,
+} from './schemas/label.schema';
 import type {
   ActionResponse,
   CardDTO,
@@ -14,6 +20,10 @@ import type {
   UpdateCardInput,
   MoveCardInput,
   CardPermissionsDTO,
+  LabelDTO,
+  CreateLabelInput,
+  UpdateLabelInput,
+  ToggleCardLabelInput,
 } from './types';
 
 export async function getBoardCardsAction(boardId: number): Promise<ActionResponse<CardDTO[]>> {
@@ -139,6 +149,119 @@ export async function moveCardAction(
   } catch (err) {
     const error = err as Error;
     return { success: false, message: error.message || 'Failed to move card' };
+  }
+}
+
+export async function getBoardLabelsAction(
+  boardId: number
+): Promise<ActionResponse<LabelDTO[]>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  try {
+    const labels = await labelService.getBoardLabels(boardId, session.userId);
+    return { success: true, data: labels };
+  } catch (err) {
+    const error = err as Error;
+    return { success: false, message: error.message || 'Failed to fetch board labels' };
+  }
+}
+
+export async function createLabelAction(
+  input: CreateLabelInput
+): Promise<ActionResponse<LabelDTO>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  const parsed = createLabelSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: 'Validation failed',
+      errors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  try {
+    const label = await labelService.createLabel(session.userId, parsed.data);
+    return { success: true, data: label };
+  } catch (err) {
+    const error = err as Error;
+    return { success: false, message: error.message || 'Failed to create label' };
+  }
+}
+
+export async function updateLabelAction(
+  labelId: number,
+  input: UpdateLabelInput
+): Promise<ActionResponse<LabelDTO>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  const parsed = updateLabelSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: 'Validation failed',
+      errors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  try {
+    const label = await labelService.updateLabel(session.userId, labelId, parsed.data);
+    return { success: true, data: label };
+  } catch (err) {
+    const error = err as Error;
+    return { success: false, message: error.message || 'Failed to update label' };
+  }
+}
+
+export async function deleteLabelAction(
+  labelId: number
+): Promise<ActionResponse<boolean>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  try {
+    await labelService.deleteLabel(session.userId, labelId);
+    return { success: true, data: true };
+  } catch (err) {
+    const error = err as Error;
+    return { success: false, message: error.message || 'Failed to delete label' };
+  }
+}
+
+export async function toggleCardLabelAction(
+  input: ToggleCardLabelInput
+): Promise<ActionResponse<{ added: boolean; card: CardDTO }>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  const parsed = toggleCardLabelSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: 'Validation failed',
+      errors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  try {
+    const result = await labelService.toggleCardLabel(session.userId, parsed.data);
+    return { success: true, data: result };
+  } catch (err) {
+    const error = err as Error;
+    return { success: false, message: error.message || 'Failed to toggle card label' };
   }
 }
 

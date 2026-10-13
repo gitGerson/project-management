@@ -119,6 +119,71 @@ export class CardService {
   }
 
   /**
+   * Helper to map Prisma card with owner and cardLabels to CardDTO
+   */
+  mapCardToDTO(card: any): CardDTO {
+    return {
+      id: card.id,
+      boardId: card.boardId,
+      listId: card.listId,
+      ownerId: card.ownerId,
+      title: card.title,
+      description: card.description,
+      status: card.status,
+      rank: card.rank,
+      sortOrder: card.sortOrder,
+      version: card.version,
+      createdAt: card.createdAt instanceof Date ? card.createdAt.toISOString() : card.createdAt,
+      updatedAt: card.updatedAt instanceof Date ? card.updatedAt.toISOString() : card.updatedAt,
+      owner: card.owner
+        ? {
+            id: card.owner.id,
+            name: card.owner.name,
+            username: card.owner.username,
+            profilePicture: card.owner.profilePicture,
+          }
+        : undefined,
+      labels: card.cardLabels
+        ? card.cardLabels.map((cl: any) => ({
+            id: cl.label.id,
+            boardId: cl.label.boardId,
+            title: cl.label.title,
+            color: cl.label.color,
+          }))
+        : [],
+    };
+  }
+
+  /**
+   * Fetch a single card by ID with owner and labels
+   */
+  async getCardById(cardId: number): Promise<CardDTO | null> {
+    const card = await prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            profilePicture: true,
+          },
+        },
+        cardLabels: {
+          include: {
+            label: true,
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
+      },
+    });
+
+    return card ? this.mapCardToDTO(card) : null;
+  }
+
+  /**
    * Fetch all cards for a board ordered deterministically by rank asc, id asc
    */
   async getCardsByBoardId(boardId: number, userId: number): Promise<CardDTO[]> {
@@ -140,32 +205,19 @@ export class CardService {
             profilePicture: true,
           },
         },
+        cardLabels: {
+          include: {
+            label: true,
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
       },
       orderBy: [{ rank: 'asc' }, { id: 'asc' }],
     });
 
-    return cards.map((c) => ({
-      id: c.id,
-      boardId: c.boardId,
-      listId: c.listId,
-      ownerId: c.ownerId,
-      title: c.title,
-      description: c.description,
-      status: c.status,
-      rank: c.rank,
-      sortOrder: c.sortOrder,
-      version: c.version,
-      createdAt: c.createdAt.toISOString(),
-      updatedAt: c.updatedAt.toISOString(),
-      owner: c.owner
-        ? {
-            id: c.owner.id,
-            name: c.owner.name,
-            username: c.owner.username,
-            profilePicture: c.owner.profilePicture,
-          }
-        : undefined,
-    }));
+    return cards.map((c) => this.mapCardToDTO(c));
   }
 
   /**
@@ -301,31 +353,18 @@ export class CardService {
             profilePicture: true,
           },
         },
+        cardLabels: {
+          include: {
+            label: true,
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
       },
     });
 
-    const result: CardDTO = {
-      id: updated.id,
-      boardId: updated.boardId,
-      listId: updated.listId,
-      ownerId: updated.ownerId,
-      title: updated.title,
-      description: updated.description,
-      status: updated.status,
-      rank: updated.rank,
-      sortOrder: updated.sortOrder,
-      version: updated.version,
-      createdAt: updated.createdAt.toISOString(),
-      updatedAt: updated.updatedAt.toISOString(),
-      owner: updated.owner
-        ? {
-            id: updated.owner.id,
-            name: updated.owner.name,
-            username: updated.owner.username,
-            profilePicture: updated.owner.profilePicture,
-          }
-        : undefined,
-    };
+    const result = this.mapCardToDTO(updated);
 
     await publishCardEvent({
       type: 'card.updated',
@@ -477,6 +516,14 @@ export class CardService {
               profilePicture: true,
             },
           },
+          cardLabels: {
+            include: {
+              label: true,
+            },
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
         },
       });
 
@@ -501,28 +548,7 @@ export class CardService {
       return updated;
     });
 
-    const result: CardDTO = {
-      id: updatedCard.id,
-      boardId: updatedCard.boardId,
-      listId: updatedCard.listId,
-      ownerId: updatedCard.ownerId,
-      title: updatedCard.title,
-      description: updatedCard.description,
-      status: updatedCard.status,
-      rank: updatedCard.rank,
-      sortOrder: updatedCard.sortOrder,
-      version: updatedCard.version,
-      createdAt: updatedCard.createdAt.toISOString(),
-      updatedAt: updatedCard.updatedAt.toISOString(),
-      owner: updatedCard.owner
-        ? {
-            id: updatedCard.owner.id,
-            name: updatedCard.owner.name,
-            username: updatedCard.owner.username,
-            profilePicture: updatedCard.owner.profilePicture,
-          }
-        : undefined,
-    };
+    const result = this.mapCardToDTO(updatedCard);
 
     await publishCardEvent({
       type: 'card.moved',
