@@ -9,7 +9,7 @@ import { boardMemberService } from '@/modules/board-members/services/board-membe
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import { ChatProvider, ChatDrawer } from '@/modules/chat';
 import { BoardDetailHeader } from '@/modules/boards/components/BoardDetailHeader';
-import { BoardCanvasScaffold } from '@/modules/boards/components/BoardCanvasScaffold';
+import { listService, BoardKanbanView } from '@/modules/lists';
 
 export const instant = false;
 
@@ -68,7 +68,12 @@ export default async function BoardDetailPage({ params }: BoardPageProps) {
     );
   }
 
-  const members = await boardMemberService.listMembersByBoardId(board.id);
+  const [members, lists, listPermissions] = await Promise.all([
+    boardMemberService.listMembersByBoardId(board.id),
+    listService.getListsByBoardId(board.id, session.userId),
+    listService.getBoardListPermissions(session.userId, board.id),
+  ]);
+
   const canEdit =
     permissions.includes(PERMISSIONS.BOARDS_UPDATE) ||
     board.currentUserRole === 'owner';
@@ -90,9 +95,13 @@ export default async function BoardDetailPage({ params }: BoardPageProps) {
           canDelete={canDelete}
         />
 
-        {/* Board Main Canvas (Kanban List & Card Area) */}
+        {/* Board Main Canvas (Kanban List Columns) */}
         <main className="flex-1 flex flex-col w-full overflow-hidden">
-          <BoardCanvasScaffold board={board} canEdit={canEdit} />
+          <BoardKanbanView
+            boardId={board.id}
+            initialLists={lists}
+            permissions={listPermissions}
+          />
         </main>
 
         {/* Global Slide-Over Live Chat Drawer for collaboration */}

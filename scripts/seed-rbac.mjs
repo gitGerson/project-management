@@ -14,12 +14,18 @@ const prisma = new PrismaClient({
 });
 
 const PERMISSIONS = [
-  // Board permissions requested
+  // Board permissions
   { name: 'boards.create', description: 'Create new board records' },
   { name: 'boards.read', description: 'View assigned board records' },
   { name: 'boards.update', description: 'Edit and update board records' },
   { name: 'boards.delete', description: 'Delete board records' },
   { name: 'boards.view_all', description: 'View all board records across the system' },
+
+  // List permissions
+  { name: 'lists.create', description: 'Create new lists in boards' },
+  { name: 'lists.read', description: 'View lists in accessible boards' },
+  { name: 'lists.update', description: 'Update list titles and positions' },
+  { name: 'lists.delete', description: 'Delete lists from boards' },
 
   // Management permissions
   { name: 'users.read', description: 'View users list and profiles' },
@@ -35,25 +41,36 @@ const ROLES = [
   },
   {
     name: 'admin',
-    description: 'Board administrator with full board CRUD, view all, and user viewing',
+    description: 'Board administrator with full board & list CRUD, view all, and user viewing',
     permissions: [
       'boards.create',
       'boards.read',
       'boards.update',
       'boards.delete',
       'boards.view_all',
+      'lists.create',
+      'lists.read',
+      'lists.update',
+      'lists.delete',
       'users.read',
     ],
   },
   {
     name: 'member',
-    description: 'Standard member with ability to create, read, and edit boards',
-    permissions: ['boards.create', 'boards.read', 'boards.update'],
+    description: 'Standard member with ability to create, read, and edit boards and lists',
+    permissions: [
+      'boards.create',
+      'boards.read',
+      'boards.update',
+      'lists.create',
+      'lists.read',
+      'lists.update',
+    ],
   },
   {
     name: 'viewer',
-    description: 'Read-only access to boards',
-    permissions: ['boards.read'],
+    description: 'Read-only access to boards and lists',
+    permissions: ['boards.read', 'lists.read'],
   },
 ];
 

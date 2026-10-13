@@ -38,11 +38,31 @@ model Board {
   image       String?  @db.VarChar(500)
   members     BoardMember[]
   pinnedByUsers UserPinnedBoard[]
+  lists       List[]
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("boards")
 }
+
+model List {
+  id        Int      @id @default(autoincrement())
+  boardId   Int      @map("board_id")
+  title     String   @map("name") @db.VarChar(255)
+  code      String   @db.VarChar(100)
+  position  Float    @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, code], name: "kanban_lists_board_id_code_unique")
+  @@index([boardId, position], name: "kanban_lists_board_id_sort_order_index")
+  @@index([boardId, isActive], name: "kanban_lists_board_id_is_active_index")
+  @@map("kanban_lists")
+}
+
 
 enum BoardRole {
   owner
