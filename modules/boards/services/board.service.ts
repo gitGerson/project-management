@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { publishBoardMemberEvent } from '@/modules/board-members/services/board-member-publisher';
+import { generateBoardSlug, parseBoardSlug, slugify } from '../utils/slug';
 import type { BoardDTO, CreateBoardInput, UpdateBoardInput } from '../types';
 
 export class BoardService {
@@ -64,6 +65,7 @@ export class BoardService {
         pinnedAt,
         currentUserRole: userRole || null,
         canEdit: userRole === 'owner',
+        slug: generateBoardSlug(b.id, b.name),
       };
     });
 
@@ -132,7 +134,46 @@ export class BoardService {
       pinnedAt,
       currentUserRole: userRole || null,
       canEdit: userRole === 'owner',
+      slug: generateBoardSlug(board.id, board.name),
     };
+  }
+
+  /**
+   * Find a board by slug or ID
+   * Supports:
+   * 1. Direct ID prefix (e.g. "1-tong-tji-go-digital" or "1")
+   * 2. Full slug matching (e.g. "tong-tji-go-digital")
+   * 3. Board name case-insensitive matching
+   */
+  async getBoardBySlug(slug: string, viewerUserId?: number): Promise<BoardDTO | null> {
+    const { id, slugText } = parseBoardSlug(slug);
+
+    // 1. If slug specifies an ID, load directly by ID
+    if (id !== undefined) {
+      const board = await this.getBoardById(id, viewerUserId);
+      if (board) return board;
+    }
+
+    // 2. Query boards to match slugText
+    const allBoards = await prisma.board.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const match = allBoards.find(
+      (b) =>
+        generateBoardSlug(b.id, b.name) === slugText ||
+        slugify(b.name) === slugText ||
+        b.name.toLowerCase() === slugText
+    );
+
+    if (match) {
+      return this.getBoardById(match.id, viewerUserId);
+    }
+
+    return null;
   }
 
   async createBoard(data: CreateBoardInput, creatorUserId?: number): Promise<BoardDTO> {
@@ -162,6 +203,7 @@ export class BoardService {
         image: board.image,
         createdAt: board.createdAt,
         updatedAt: board.updatedAt,
+        slug: generateBoardSlug(board.id, board.name),
       };
     });
 
@@ -198,6 +240,7 @@ export class BoardService {
       image: board.image,
       createdAt: board.createdAt,
       updatedAt: board.updatedAt,
+      slug: generateBoardSlug(board.id, board.name),
     };
   }
 

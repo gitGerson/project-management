@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { Pin, Eye, Pencil } from 'lucide-react';
 
 export interface BoardData {
@@ -18,6 +19,7 @@ export interface BoardData {
   color?: string;
   currentUserRole?: 'owner' | 'member' | 'monitor' | 'guest' | null;
   canEdit?: boolean;
+  slug?: string;
 }
 
 interface BoardCardProps {
@@ -133,18 +135,23 @@ export function BoardCard({
       className="group relative bg-white rounded-2xl border border-gray-200/90 shadow-sm hover:shadow-md transition-all duration-150 overflow-hidden flex flex-col"
     >
       {/* Cover Area */}
-      <div className="h-36 sm:h-40 w-full border-b border-gray-100 flex items-center justify-center overflow-hidden">
+      <Link
+        href={`/board/${board.slug || board.id}`}
+        className="h-36 sm:h-40 w-full border-b border-gray-100 flex items-center justify-center overflow-hidden cursor-pointer"
+        aria-label={`Open ${board.name}`}
+      >
         {renderCover()}
-      </div>
+      </Link>
 
       {/* Footer Area */}
       <div className="px-3.5 py-2.5 bg-gray-50/70 flex items-center justify-between gap-2 min-h-[46px]">
-        <h3
-          className="text-xs sm:text-sm font-semibold text-gray-800 truncate flex-1 tracking-tight"
+        <Link
+          href={`/board/${board.slug || board.id}`}
+          className="text-xs sm:text-sm font-semibold text-gray-800 hover:text-emerald-700 transition-colors truncate flex-1 tracking-tight cursor-pointer"
           title={board.name}
         >
           {board.name}
-        </h3>
+        </Link>
 
         <div className="flex items-center gap-1 flex-shrink-0">
           {/* Pin Button */}

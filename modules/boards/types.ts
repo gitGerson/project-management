@@ -9,6 +9,7 @@ export interface BoardDTO {
   pinnedAt?: Date | null;
   currentUserRole?: 'owner' | 'member' | 'monitor' | 'guest' | null;
   canEdit?: boolean;
+  slug?: string;
 }
 
 export interface CreateBoardInput {
