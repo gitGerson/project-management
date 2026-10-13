@@ -102,7 +102,7 @@ export const CardMemberPicker: React.FC<CardMemberPickerProps> = ({
 
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            container.style.transition = 'height 300ms cubic-bezier(0.2, 0, 0, 1)';
+            container.style.transition = 'height 700ms cubic-bezier(0.25, 1, 0.5, 1)';
             container.style.height = `${newH}px`;
 
             const onTransitionEnd = (e: TransitionEvent) => {
@@ -138,7 +138,7 @@ export const CardMemberPicker: React.FC<CardMemberPickerProps> = ({
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             el.style.transition =
-              'transform 300ms cubic-bezier(0.2, 0, 0, 1), background-color 300ms ease-in-out, border-color 300ms ease-in-out, padding 300ms ease-in-out, margin 300ms ease-in-out';
+              'transform 700ms cubic-bezier(0.25, 1, 0.5, 1), background-color 700ms ease-in-out, border-color 700ms ease-in-out, padding 700ms ease-in-out, margin 700ms ease-in-out';
             el.style.transform = '';
 
             const onTransitionEnd = (e: TransitionEvent) => {
@@ -363,7 +363,7 @@ export const CardMemberPicker: React.FC<CardMemberPickerProps> = ({
                   if (node) itemRefs.current.set(m.userId, node);
                   else itemRefs.current.delete(m.userId);
                 }}
-                className={`inline-flex items-center rounded-full transition-all duration-300 ease-in-out overflow-hidden ${
+                className={`inline-flex items-center rounded-full transition-all duration-700 ease-in-out overflow-hidden ${
                   isOverflow
                     ? 'max-w-0 opacity-0 -mr-0 pointer-events-none scale-0'
                     : isExpanded
@@ -376,7 +376,7 @@ export const CardMemberPicker: React.FC<CardMemberPickerProps> = ({
                 {/* Avatar */}
                 <div
                   style={{ backgroundColor: bg, color: text }}
-                  className={`rounded-full font-bold flex items-center justify-center overflow-hidden shrink-0 shadow-2xs transition-all duration-300 ease-in-out ${
+                  className={`rounded-full font-bold flex items-center justify-center overflow-hidden shrink-0 shadow-2xs transition-all duration-700 ease-in-out ${
                     isExpanded
                       ? 'w-6 h-6 text-[10px] ring-1 ring-white'
                       : 'w-8 h-8 text-xs ring-2 ring-white hover:scale-105'
@@ -396,7 +396,7 @@ export const CardMemberPicker: React.FC<CardMemberPickerProps> = ({
 
                 {/* Name & Remove Button container - animates width and opacity smoothly on both expand and collapse */}
                 <div
-                  className={`flex items-center overflow-hidden transition-all duration-300 ease-in-out ${
+                  className={`flex items-center overflow-hidden transition-all duration-700 ease-in-out ${
                     isExpanded
                       ? 'max-w-[130px] opacity-100 ml-1.5'
                       : 'max-w-0 opacity-0 ml-0 pointer-events-none'
@@ -439,7 +439,7 @@ export const CardMemberPicker: React.FC<CardMemberPickerProps> = ({
               if (el) itemRefs.current.set('overflow-badge', el);
               else itemRefs.current.delete('overflow-badge');
             }}
-            className={`rounded-full bg-gray-100 text-gray-700 text-[11px] font-bold flex items-center justify-center ring-2 ring-white shadow-2xs shrink-0 cursor-pointer transition-all duration-300 hover:bg-gray-200 hover:z-20 ${
+            className={`rounded-full bg-gray-100 text-gray-700 text-[11px] font-bold flex items-center justify-center ring-2 ring-white shadow-2xs shrink-0 cursor-pointer transition-all duration-700 hover:bg-gray-200 hover:z-20 ${
               !isExpanded
                 ? 'w-8 h-8 opacity-100 scale-100 -mr-2 mb-0'
                 : 'w-0 h-0 opacity-0 scale-0 -mr-0 mb-0 pointer-events-none overflow-hidden'
@@ -461,7 +461,7 @@ export const CardMemberPicker: React.FC<CardMemberPickerProps> = ({
             }}
             type="button"
             onClick={() => setIsOpen((prev) => !prev)}
-            className={`w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 border border-gray-200/80 flex items-center justify-center transition-all duration-300 cursor-pointer shadow-2xs shrink-0 hover:z-20 ${
+            className={`w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 border border-gray-200/80 flex items-center justify-center transition-all duration-700 cursor-pointer shadow-2xs shrink-0 hover:z-20 ${
               isExpanded ? 'ring-0 mb-1.5' : 'ring-2 ring-white mb-0'
             }`}
             title="Add members"

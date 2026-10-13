@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Tag,
-  ChevronDown,
+  TagPlus,
   X,
   Check,
   Pencil,
@@ -21,6 +20,8 @@ import {
   toggleCardLabelAction,
 } from '../actions';
 import { getContrastTextColor } from '../utils/color-contrast';
+
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export const LABEL_COLORS = [
   // Row 1
@@ -45,6 +46,7 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
   onCardUpdated,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [boardLabels, setBoardLabels] = useState<LabelDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,15 +60,262 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
   const [formColor, setFormColor] = useState<string | null>(LABEL_COLORS[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Positioning
+  // Positioning & animation refs
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Map<string | number, HTMLElement>>(new Map());
+  const isAnimatingRef = useRef(false);
+  const pendingFlip = useRef<{
+    isExpanding: boolean;
+    labelRects: Map<string | number, { width: number; height: number; left: number; top: number }>;
+    tagBtnRect: DOMRect | null;
+    containerH: number | null;
+  } | null>(null);
+
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
+
+  const toggleExpanded = useCallback(() => {
+    if (isAnimatingRef.current) return;
+
+    const containerH = containerRef.current?.getBoundingClientRect().height || null;
+    const labelRects = new Map<string | number, { width: number; height: number; left: number; top: number }>();
+
+    (card.labels || []).forEach((lbl) => {
+      const el = itemRefs.current.get(lbl.id);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        labelRects.set(lbl.id, {
+          width: r.width,
+          height: r.height,
+          left: r.left,
+          top: r.top,
+        });
+      }
+    });
+
+    const tagBtn = itemRefs.current.get('tag-plus-button');
+    const tagBtnRect = tagBtn ? tagBtn.getBoundingClientRect() : null;
+
+    pendingFlip.current = {
+      isExpanding: !isExpanded,
+      labelRects,
+      tagBtnRect,
+      containerH,
+    };
+
+    setIsExpanded((prev) => !prev);
+  }, [isExpanded, card.labels]);
+
+  useIsomorphicLayoutEffect(() => {
+    if (!pendingFlip.current) return;
+    const { isExpanding, labelRects, tagBtnRect, containerH: oldH } = pendingFlip.current;
+    pendingFlip.current = null;
+
+    // 1. Container height smooth interpolation
+    if (containerRef.current && oldH !== null) {
+      const container = containerRef.current;
+      const newH = container.getBoundingClientRect().height;
+
+      if (Math.abs(oldH - newH) > 1) {
+        container.style.height = `${oldH}px`;
+        container.style.overflow = 'hidden';
+        container.style.transition = 'none';
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            container.style.transition = 'height 700ms cubic-bezier(0.25, 1, 0.5, 1)';
+            container.style.height = `${newH}px`;
+
+            const onTransitionEnd = (e: TransitionEvent) => {
+              if (e.target === container && e.propertyName === 'height') {
+                container.style.height = '';
+                container.style.transition = '';
+                container.style.overflow = '';
+                container.removeEventListener('transitionend', onTransitionEnd);
+              }
+            };
+            container.addEventListener('transitionend', onTransitionEnd);
+          });
+        });
+      }
+    }
+
+    const cardLabels = card.labels || [];
+    isAnimatingRef.current = true;
+
+    if (!isExpanding) {
+      // ===== SHRINKING: Smoothly contract pills to colored circular dots =====
+      // Before paint: Lock each label to its current expanded width and styles
+      cardLabels.forEach((lbl) => {
+        const el = itemRefs.current.get(lbl.id);
+        const old = labelRects.get(lbl.id);
+        if (el && old) {
+          el.style.transition = 'none';
+          el.style.width = `${old.width}px`;
+          el.style.height = `${old.height}px`;
+          el.style.padding = '0 10px';
+          el.style.borderRadius = '8px';
+        }
+      });
+
+      // Animate smoothly to 20px x 20px circular dot
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          cardLabels.forEach((lbl) => {
+            const el = itemRefs.current.get(lbl.id);
+            if (el) {
+              el.style.transition =
+                'width 700ms cubic-bezier(0.25, 1, 0.5, 1), height 700ms cubic-bezier(0.25, 1, 0.5, 1), padding 700ms cubic-bezier(0.25, 1, 0.5, 1), border-radius 700ms cubic-bezier(0.25, 1, 0.5, 1)';
+              el.style.width = '20px';
+              el.style.height = '20px';
+              el.style.padding = '0';
+              el.style.borderRadius = '9999px';
+            }
+          });
+
+          // Row change adjustment (translateY)
+          cardLabels.forEach((lbl) => {
+            const el = itemRefs.current.get(lbl.id);
+            const old = labelRects.get(lbl.id);
+            if (el && old) {
+              const newRect = el.getBoundingClientRect();
+              const dy = old.top - newRect.top;
+              if (Math.abs(dy) > 4) {
+                el.style.transform = `translateY(${dy}px)`;
+                requestAnimationFrame(() => {
+                  el.style.transition = `${el.style.transition}, transform 700ms cubic-bezier(0.25, 1, 0.5, 1)`;
+                  el.style.transform = '';
+                });
+              }
+            }
+          });
+
+          const tagBtn = itemRefs.current.get('tag-plus-button');
+          if (tagBtn && tagBtnRect) {
+            const newTagRect = tagBtn.getBoundingClientRect();
+            const dy = tagBtnRect.top - newTagRect.top;
+            if (Math.abs(dy) > 4) {
+              tagBtn.style.transform = `translateY(${dy}px)`;
+              tagBtn.style.transition = 'none';
+              requestAnimationFrame(() => {
+                tagBtn.style.transition = 'transform 700ms cubic-bezier(0.25, 1, 0.5, 1)';
+                tagBtn.style.transform = '';
+              });
+            }
+          }
+
+          setTimeout(() => {
+            cardLabels.forEach((lbl) => {
+              const el = itemRefs.current.get(lbl.id);
+              if (el) {
+                el.style.width = '';
+                el.style.height = '';
+                el.style.padding = '';
+                el.style.borderRadius = '';
+                el.style.transition = '';
+                el.style.transform = '';
+              }
+            });
+            if (tagBtn) {
+              tagBtn.style.transform = '';
+              tagBtn.style.transition = '';
+            }
+            isAnimatingRef.current = false;
+          }, 720);
+        });
+      });
+    } else {
+      // ===== EXPANDING: Smoothly expand colored dots into full pills =====
+      const targetWidths = new Map<string | number, number>();
+      cardLabels.forEach((lbl) => {
+        const el = itemRefs.current.get(lbl.id);
+        if (el) {
+          targetWidths.set(lbl.id, el.getBoundingClientRect().width);
+          // Before paint: Lock immediately to 20px circular dot
+          el.style.transition = 'none';
+          el.style.width = '20px';
+          el.style.height = '20px';
+          el.style.padding = '0';
+          el.style.borderRadius = '9999px';
+        }
+      });
+
+      // Animate smoothly to expanded width & height
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          cardLabels.forEach((lbl) => {
+            const el = itemRefs.current.get(lbl.id);
+            const targetW = targetWidths.get(lbl.id);
+            if (el && targetW) {
+              el.style.transition =
+                'width 700ms cubic-bezier(0.25, 1, 0.5, 1), height 700ms cubic-bezier(0.25, 1, 0.5, 1), padding 700ms cubic-bezier(0.25, 1, 0.5, 1), border-radius 700ms cubic-bezier(0.25, 1, 0.5, 1)';
+              el.style.width = `${targetW}px`;
+              el.style.height = '28px';
+              el.style.padding = '0 10px';
+              el.style.borderRadius = '8px';
+            }
+          });
+
+          // Row change adjustment (translateY)
+          cardLabels.forEach((lbl) => {
+            const el = itemRefs.current.get(lbl.id);
+            const old = labelRects.get(lbl.id);
+            if (el && old) {
+              const newRect = el.getBoundingClientRect();
+              const dy = old.top - newRect.top;
+              if (Math.abs(dy) > 4) {
+                el.style.transform = `translateY(${dy}px)`;
+                requestAnimationFrame(() => {
+                  el.style.transition = `${el.style.transition}, transform 700ms cubic-bezier(0.25, 1, 0.5, 1)`;
+                  el.style.transform = '';
+                });
+              }
+            }
+          });
+
+          const tagBtn = itemRefs.current.get('tag-plus-button');
+          if (tagBtn && tagBtnRect) {
+            const newTagRect = tagBtn.getBoundingClientRect();
+            const dy = tagBtnRect.top - newTagRect.top;
+            if (Math.abs(dy) > 4) {
+              tagBtn.style.transform = `translateY(${dy}px)`;
+              tagBtn.style.transition = 'none';
+              requestAnimationFrame(() => {
+                tagBtn.style.transition = 'transform 700ms cubic-bezier(0.25, 1, 0.5, 1)';
+                tagBtn.style.transform = '';
+              });
+            }
+          }
+
+          setTimeout(() => {
+            cardLabels.forEach((lbl) => {
+              const el = itemRefs.current.get(lbl.id);
+              if (el) {
+                el.style.width = '';
+                el.style.height = '';
+                el.style.padding = '';
+                el.style.borderRadius = '';
+                el.style.transition = '';
+                el.style.transform = '';
+              }
+            });
+            if (tagBtn) {
+              tagBtn.style.transform = '';
+              tagBtn.style.transition = '';
+            }
+            isAnimatingRef.current = false;
+          }, 720);
+        });
+      });
+    }
+  }, [isExpanded, card.labels]);
 
   const updateCoords = useCallback(() => {
     if (!buttonRef.current) return;
@@ -96,6 +345,7 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
   useEffect(() => {
     if (isOpen) {
       updateCoords();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadBoardLabels();
       setViewMode('list');
       setSearchQuery('');
@@ -258,43 +508,65 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
         Labels
       </span>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Add Label Button */}
-        {canUpdate && (
-          <button
-            ref={buttonRef}
-            type="button"
-            onClick={() => setIsOpen((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-200/90 rounded-xl text-xs font-semibold text-gray-700 shadow-2xs transition-colors cursor-pointer"
-          >
-            <Tag className="w-3.5 h-3.5 text-gray-500" />
-            <span>Add label</span>
-            <ChevronDown className="w-3 h-3 text-gray-400" />
-          </button>
-        )}
-
+      <div ref={containerRef} className="flex flex-wrap items-center gap-1.5 sm:gap-2">
         {/* Applied Labels */}
         {cardLabels.map((lbl) => {
           const textColor = getContrastTextColor(lbl.color);
           return (
             <span
               key={lbl.id}
-              onClick={() => canUpdate && setIsOpen(true)}
+              ref={(node) => {
+                if (node) itemRefs.current.set(lbl.id, node);
+                else itemRefs.current.delete(lbl.id);
+              }}
+              onClick={toggleExpanded}
               style={{
                 backgroundColor: lbl.color || '#f1f5f9',
                 color: textColor,
               }}
-              className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold shadow-2xs transition-transform tracking-tight truncate max-w-[200px] ${
+              className={`inline-flex items-center font-bold shadow-2xs tracking-tight cursor-pointer hover:opacity-90 active:scale-95 select-none overflow-hidden ${
                 !lbl.color ? 'border border-gray-300' : ''
               } ${
-                canUpdate ? 'cursor-pointer hover:scale-102 active:scale-98' : ''
+                isExpanded
+                  ? 'h-7 px-2.5 rounded-lg text-xs'
+                  : 'h-5 w-5 rounded-full p-0 justify-center shrink-0'
               }`}
-              title={lbl.title || 'Label'}
+              title={lbl.title ? `${lbl.title} (Click to ${isExpanded ? 'shrink' : 'expand'})` : `Click to ${isExpanded ? 'shrink' : 'expand'}`}
             >
-              {lbl.title || ' '}
+              <span
+                className={`overflow-hidden whitespace-nowrap truncate select-none ${
+                  isExpanded
+                    ? 'opacity-100 transition-opacity duration-300 ease-out delay-150'
+                    : 'opacity-0 transition-opacity duration-200 ease-in'
+                }`}
+              >
+                {lbl.title || ' '}
+              </span>
             </span>
           );
         })}
+
+        {/* Add Label Icon Button using TagPlus (fixed size, never shrinks) */}
+        {canUpdate && (
+          <button
+            ref={(el) => {
+              (buttonRef as React.MutableRefObject<HTMLButtonElement | null>).current = el;
+              if (el) itemRefs.current.set('tag-plus-button', el);
+              else itemRefs.current.delete('tag-plus-button');
+            }}
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 border border-gray-200/80 flex items-center justify-center transition-colors cursor-pointer shadow-2xs shrink-0"
+            title="Add label"
+            aria-label="Add label"
+          >
+            <TagPlus className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {!canUpdate && cardLabels.length === 0 && (
+          <span className="text-xs text-gray-400 italic">No labels</span>
+        )}
       </div>
 
       {/* Popover */}
