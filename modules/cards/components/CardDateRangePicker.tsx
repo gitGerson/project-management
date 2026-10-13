@@ -9,7 +9,6 @@ import {
   ChevronDown,
   X,
   Check,
-  Clock,
   Trash2,
 } from 'lucide-react';
 import type { CardDTO } from '../types';
@@ -63,11 +62,13 @@ export const CardDateRangePicker: React.FC<CardDateRangePickerProps> = ({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
   // Sync internal state when card changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStartDate(parseDate(card.startDate));
     setDueDate(parseDate(card.dueDate));
     setHasStartDate(Boolean(card.startDate));
@@ -578,50 +579,60 @@ export const CardDateRangePicker: React.FC<CardDateRangePickerProps> = ({
 
   if (variant === 'property') {
     return (
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl bg-white border border-gray-200/80 text-gray-600 flex items-center justify-center shrink-0 shadow-2xs">
-          <CalendarIcon className="w-4 h-4 text-gray-600" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
-            Dates
-          </span>
-          <div className="flex items-center gap-2">
+      <div className="shrink-0">
+        <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+          Dates
+        </span>
+
+        <div className="group/date min-h-8 flex items-center gap-1.5">
+          {canUpdate ? (
             <button
               ref={buttonRef}
               type="button"
               onClick={handleOpen}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer truncate max-w-full ${
-                hasAnyDate
-                  ? 'bg-white hover:bg-gray-100 border border-gray-200 text-gray-800 shadow-2xs'
-                  : 'bg-white hover:bg-gray-100 border border-dashed border-gray-300 text-gray-500 hover:text-gray-700'
-              }`}
-              title={hasAnyDate ? 'Change dates' : 'Add dates'}
+              className="inline-flex items-center gap-2 text-left cursor-pointer transition-colors focus:outline-none"
+              title={hasAnyDate ? 'Change dates' : 'Set dates'}
             >
-              <span className="truncate">{hasAnyDate ? formattedRange : '+ Add dates'}</span>
+              <span
+                className={`text-xs font-semibold transition-colors ${
+                  hasAnyDate
+                    ? 'text-gray-800 hover:text-emerald-700 hover:underline'
+                    : 'text-gray-400 italic hover:text-gray-600 hover:underline'
+                }`}
+              >
+                {hasAnyDate ? formattedRange : 'Set dates'}
+              </span>
+
               {hasAnyDate && dueStatus.label && (
                 <span
-                  className={`px-1.5 py-0.2 rounded text-[9px] uppercase tracking-wider border shrink-0 ${dueStatus.badgeClass}`}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border shrink-0 ${dueStatus.badgeClass}`}
                 >
                   {dueStatus.label}
                 </span>
               )}
-              <ChevronDown className="w-3 h-3 text-gray-400 shrink-0" />
             </button>
+          ) : (
+            <span
+              className={`text-xs font-semibold ${
+                hasAnyDate ? 'text-gray-800' : 'text-gray-400 italic'
+              }`}
+            >
+              {hasAnyDate ? formattedRange : 'No dates'}
+            </span>
+          )}
 
-            {hasAnyDate && canUpdate && (
-              <button
-                type="button"
-                onClick={handleRemove}
-                disabled={isSaving}
-                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
-                title="Remove dates"
-                aria-label="Remove dates"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          {hasAnyDate && canUpdate && (
+            <button
+              type="button"
+              onClick={handleRemove}
+              disabled={isSaving}
+              className="p-0.5 text-gray-300 hover:text-red-600 rounded-full hover:bg-black/5 opacity-0 group-hover/date:opacity-100 transition-opacity cursor-pointer shrink-0"
+              title="Remove dates"
+              aria-label="Remove dates"
+            >
+              <X className="w-3 h-3 stroke-[2.5]" />
+            </button>
+          )}
         </div>
 
         {popoverElement}

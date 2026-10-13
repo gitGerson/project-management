@@ -25,6 +25,7 @@ export const updateCardSchema = z.object({
   status: z.string().trim().max(20).optional(),
   startDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
+  ownerId: z.number().int().positive('Invalid owner ID').optional(),
 });
 
 export const moveCardSchema = z.object({

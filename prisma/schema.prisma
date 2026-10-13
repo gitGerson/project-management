@@ -26,6 +26,7 @@ model User {
   comments    Comment[]
   commentReads CommentRead[]
   cards       Card[]
+  cardMembers CardMember[]
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -87,6 +88,7 @@ model Card {
   list        List      @relation(fields: [listId], references: [id], onDelete: Cascade)
   owner       User      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   cardLabels  CardLabel[]
+  members     CardMember[]
 
   @@index([listId, rank], name: "cards_list_id_rank_idx")
   @@index([listId, sortOrder], name: "cards_list_id_sort_order_idx")
@@ -230,4 +232,21 @@ model CardLabel {
   @@index([labelId], name: "card_labels_label_id_idx")
   @@map("card_labels")
 }
+
+model CardMember {
+  id        Int      @id @default(autoincrement())
+  cardId    Int      @map("card_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cardId, userId], name: "card_members_card_id_user_id_unique")
+  @@index([cardId], name: "card_members_card_id_idx")
+  @@index([userId], name: "card_members_user_id_idx")
+  @@map("card_members")
+}
+
 

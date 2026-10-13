@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { CardDTO } from '../types';
 import { getContrastTextColor } from '../utils/color-contrast';
+import { getMemberColor } from './CardMemberPicker';
 import {
   formatCompactDate,
   formatDateRange,
@@ -70,6 +71,7 @@ export function KanbanCard({
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
 
@@ -466,8 +468,45 @@ export function KanbanCard({
           )}
         </div>
 
-        {/* Owner avatar */}
-        {card.owner && (
+        {/* Member avatars or Owner avatar fallback */}
+        {card.members && card.members.length > 0 ? (
+          <div
+            className="flex items-center -space-x-1.5"
+            title={`Assigned to: ${card.members.map((m) => m.user.name).join(', ')}`}
+          >
+            {card.members.slice(0, 3).map((m) => {
+              const initial = m.user.name ? m.user.name.trim()[0].toUpperCase() : 'U';
+              const { bg, text } = getMemberColor(m.userId);
+              return (
+                <div
+                  key={m.userId}
+                  style={{ backgroundColor: bg, color: text }}
+                  className="w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white shadow-2xs"
+                  title={`${m.user.name} (@${m.user.username})`}
+                >
+                  {m.user.profilePicture ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={m.user.profilePicture}
+                      alt={m.user.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span>{initial}</span>
+                  )}
+                </div>
+              );
+            })}
+            {card.members.length > 3 && (
+              <div
+                className="w-5 h-5 rounded-full bg-gray-100 text-gray-700 text-[8px] font-bold flex items-center justify-center shrink-0 ring-1 ring-white shadow-2xs"
+                title={`${card.members.length - 3} more members`}
+              >
+                +{card.members.length - 3}
+              </div>
+            )}
+          </div>
+        ) : card.owner ? (
           <div
             className="w-5 h-5 rounded-full bg-emerald-600 text-white text-[9px] font-bold flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white"
             title={`Created by ${card.owner.name}`}
@@ -483,7 +522,7 @@ export function KanbanCard({
               <span>{creatorInitial}</span>
             )}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

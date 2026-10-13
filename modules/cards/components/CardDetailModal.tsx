@@ -6,21 +6,17 @@ import type { CardDTO, UpdateCardInput } from '../types';
 import type { ListDTO } from '@/modules/lists/types';
 import { CardCommentsSection } from './CardCommentsSection';
 import { CardLabelPicker } from './CardLabelPicker';
+import { CardMemberPicker } from './CardMemberPicker';
 import { CardDateRangePicker } from './CardDateRangePicker';
+import { CardOwnerPicker } from './CardOwnerPicker';
 import {
   X,
   AlignLeft,
   Columns3,
-  Calendar,
-  User,
-  Clock,
   Pencil,
   Check,
   Trash2,
-  AlertTriangle,
   ChevronDown,
-  MessageSquare,
-  Sparkles,
 } from 'lucide-react';
 
 interface CardDetailModalProps {
@@ -76,12 +72,14 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
   const listMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
   // Sync internal state when card changes
   useEffect(() => {
     if (card) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTitleValue(card.title);
       setDescValue(card.description || '');
       setIsEditingTitle(false);
@@ -219,25 +217,6 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
       onClose();
     }
   };
-
-  const formatDate = (isoStr: string) => {
-    try {
-      const d = new Date(isoStr);
-      return d.toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return isoStr;
-    }
-  };
-
-  const creatorInitial = card.owner?.name
-    ? card.owner.name.trim()[0].toUpperCase()
-    : 'U';
 
   return createPortal(
     <div
@@ -469,34 +448,23 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
             {/* Divider under Card Title */}
             <div className="h-px bg-gray-100 mb-5" />
 
-            {/* Properties Information (Creator & Dates) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center mb-6">
-              {/* Creator */}
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white shadow-2xs">
-                  {card.owner?.profilePicture ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={card.owner.profilePicture}
-                      alt={card.owner.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span>{creatorInitial}</span>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                    Created by
-                  </span>
-                  <span className="block text-xs font-bold text-gray-800 truncate">
-                    {card.owner?.name || 'User'}
-                  </span>
-                  <span className="block text-[10px] text-gray-400 font-medium">
-                    {formatDate(card.createdAt)}
-                  </span>
-                </div>
-              </div>
+            {/* Properties Information (Card Owner, Members & Dates) */}
+            <div className="flex flex-wrap items-start gap-x-6 sm:gap-x-7 gap-y-4 mb-6">
+              {/* Card Owner */}
+              <CardOwnerPicker
+                card={card}
+                canUpdate={canUpdate}
+                onCardUpdated={(updated) => onCardUpdated?.(updated)}
+              />
+
+              {/* Members */}
+              <CardMemberPicker
+                card={card}
+                boardId={card.boardId}
+                canUpdate={canUpdate}
+                currentUserId={currentUserId}
+                onCardUpdated={(updated) => onCardUpdated?.(updated)}
+              />
 
               {/* Dates */}
               <CardDateRangePicker

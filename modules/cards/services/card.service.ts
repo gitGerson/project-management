@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 import { hasPermission } from '@/lib/access';
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
@@ -10,6 +11,45 @@ import type {
   MoveCardInput,
   CardPermissionsDTO,
 } from '../types';
+
+export const CARD_DEFAULT_INCLUDE = {
+  owner: {
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      profilePicture: true,
+    },
+  },
+  cardLabels: {
+    include: {
+      label: true,
+    },
+    orderBy: {
+      createdAt: 'asc' as const,
+    },
+  },
+  members: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          email: true,
+          profilePicture: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'asc' as const,
+    },
+  },
+};
+
+export type CardWithRelations = Prisma.CardGetPayload<{
+  include: typeof CARD_DEFAULT_INCLUDE;
+}>;
 
 export class CardService {
   /**
@@ -26,7 +66,7 @@ export class CardService {
     canDelete: boolean;
     memberRole: 'owner' | 'member' | 'monitor' | 'guest' | null;
   }> {
-    const [hasViewAll, hasCreatePerm, hasReadPerm, hasUpdatePerm, hasDeletePerm, member] =
+    const [hasViewAll, hasCreatePerm, , hasUpdatePerm, hasDeletePerm, member] =
       await Promise.all([
         hasPermission(userId, PERMISSIONS.BOARDS_VIEW_ALL),
         hasPermission(userId, PERMISSIONS.CARDS_CREATE),
@@ -121,7 +161,7 @@ export class CardService {
   /**
    * Helper to map Prisma card with owner and cardLabels to CardDTO
    */
-  mapCardToDTO(card: any): CardDTO {
+  mapCardToDTO(card: CardWithRelations): CardDTO {
     return {
       id: card.id,
       boardId: card.boardId,
@@ -154,11 +194,26 @@ export class CardService {
           }
         : undefined,
       labels: card.cardLabels
-        ? card.cardLabels.map((cl: any) => ({
+        ? card.cardLabels.map((cl) => ({
             id: cl.label.id,
             boardId: cl.label.boardId,
             title: cl.label.title,
             color: cl.label.color,
+          }))
+        : [],
+      members: card.members
+        ? card.members.map((cm) => ({
+            id: cm.id,
+            cardId: cm.cardId,
+            userId: cm.userId,
+            createdAt: cm.createdAt instanceof Date ? cm.createdAt.toISOString() : cm.createdAt,
+            user: {
+              id: cm.user.id,
+              name: cm.user.name,
+              username: cm.user.username,
+              email: cm.user.email,
+              profilePicture: cm.user.profilePicture,
+            },
           }))
         : [],
     };
@@ -170,24 +225,7 @@ export class CardService {
   async getCardById(cardId: number): Promise<CardDTO | null> {
     const card = await prisma.card.findUnique({
       where: { id: cardId },
-      include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            profilePicture: true,
-          },
-        },
-        cardLabels: {
-          include: {
-            label: true,
-          },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-      },
+      include: CARD_DEFAULT_INCLUDE,
     });
 
     return card ? this.mapCardToDTO(card) : null;
@@ -206,24 +244,7 @@ export class CardService {
       where: {
         boardId,
       },
-      include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            profilePicture: true,
-          },
-        },
-        cardLabels: {
-          include: {
-            label: true,
-          },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-      },
+      include: CARD_DEFAULT_INCLUDE,
       orderBy: [{ rank: 'asc' }, { id: 'asc' }],
     });
 
@@ -281,16 +302,7 @@ export class CardService {
         rank: newRank,
         version: 1,
       },
-      include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            profilePicture: true,
-          },
-        },
-      },
+      include: CARD_DEFAULT_INCLUDE,
     });
 
     const result = this.mapCardToDTO(card);
@@ -325,6 +337,21 @@ export class CardService {
       throw new Error('Forbidden. You do not have permission to edit this card.');
     }
 
+    if (input.ownerId !== undefined && input.ownerId !== existing.ownerId) {
+      const isCardMember = await prisma.cardMember.findUnique({
+        where: {
+          card_members_card_id_user_id_unique: {
+            cardId,
+            userId: input.ownerId,
+          },
+        },
+      });
+
+      if (!isCardMember) {
+        throw new Error('Selected owner must be an assigned member of this card.');
+      }
+    }
+
     const updated = await prisma.card.update({
       where: { id: cardId },
       data: {
@@ -339,26 +366,10 @@ export class CardService {
         ...(input.dueDate !== undefined && {
           dueDate: input.dueDate ? new Date(input.dueDate) : null,
         }),
+        ...(input.ownerId !== undefined && { ownerId: input.ownerId }),
         version: { increment: 1 },
       },
-      include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            profilePicture: true,
-          },
-        },
-        cardLabels: {
-          include: {
-            label: true,
-          },
-          orderBy: {
-            createdAt: 'asc',
-          },
-        },
-      },
+      include: CARD_DEFAULT_INCLUDE,
     });
 
     const result = this.mapCardToDTO(updated);
@@ -504,24 +515,7 @@ export class CardService {
           rank: newRank,
           version: { increment: 1 },
         },
-        include: {
-          owner: {
-            select: {
-              id: true,
-              name: true,
-              username: true,
-              profilePicture: true,
-            },
-          },
-          cardLabels: {
-            include: {
-              label: true,
-            },
-            orderBy: {
-              createdAt: 'asc',
-            },
-          },
-        },
+        include: CARD_DEFAULT_INCLUDE,
       });
 
       // Occasional rebalancing if rank length exceeds threshold (> 64 characters)

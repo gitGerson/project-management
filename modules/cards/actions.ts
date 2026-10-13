@@ -3,6 +3,9 @@
 import { getSession } from '@/lib/auth';
 import { cardService } from './services/card.service';
 import { labelService } from './services/label.service';
+import { cardMemberService } from './services/card-member.service';
+import { boardMemberService } from '@/modules/board-members/services/board-member.service';
+import type { BoardMemberDTO } from '@/modules/board-members/types';
 import {
   createCardSchema,
   updateCardSchema,
@@ -13,6 +16,7 @@ import {
   updateLabelSchema,
   toggleCardLabelSchema,
 } from './schemas/label.schema';
+import { toggleCardMemberSchema } from './schemas/member.schema';
 import type {
   ActionResponse,
   CardDTO,
@@ -24,6 +28,7 @@ import type {
   CreateLabelInput,
   UpdateLabelInput,
   ToggleCardLabelInput,
+  ToggleCardMemberInput,
 } from './types';
 
 export async function getBoardCardsAction(boardId: number): Promise<ActionResponse<CardDTO[]>> {
@@ -264,4 +269,48 @@ export async function toggleCardLabelAction(
     return { success: false, message: error.message || 'Failed to toggle card label' };
   }
 }
+
+export async function toggleCardMemberAction(
+  input: ToggleCardMemberInput
+): Promise<ActionResponse<{ added: boolean; card: CardDTO }>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  const parsed = toggleCardMemberSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: 'Validation failed',
+      errors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  try {
+    const result = await cardMemberService.toggleCardMember(session.userId, parsed.data);
+    return { success: true, data: result };
+  } catch (err) {
+    const error = err as Error;
+    return { success: false, message: error.message || 'Failed to toggle card member' };
+  }
+}
+
+export async function getBoardMembersForCardAction(
+  boardId: number
+): Promise<ActionResponse<BoardMemberDTO[]>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  try {
+    const members = await boardMemberService.listMembersByBoardId(boardId);
+    return { success: true, data: members };
+  } catch (err) {
+    const error = err as Error;
+    return { success: false, message: error.message || 'Failed to fetch board members' };
+  }
+}
+
 
