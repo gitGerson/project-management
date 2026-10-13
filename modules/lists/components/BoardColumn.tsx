@@ -43,6 +43,7 @@ interface BoardColumnProps {
   onDeleteCard?: (cardId: number) => Promise<boolean>;
   onMoveCardUp?: (cardId: number) => void;
   onMoveCardDown?: (cardId: number) => void;
+  onCardClick?: (card: CardDTO) => void;
   isDraggingCard?: boolean;
   isOverlay?: boolean;
 }
@@ -62,6 +63,7 @@ export function BoardColumn({
   onDeleteCard,
   onMoveCardUp,
   onMoveCardDown,
+  onCardClick,
   isDraggingCard = false,
   isOverlay = false,
 }: BoardColumnProps) {
@@ -406,6 +408,7 @@ export function BoardColumn({
                   ? () => onMoveCardDown(card.id)
                   : undefined
               }
+              onCardClick={onCardClick}
             />
           ))}
         </SortableContext>

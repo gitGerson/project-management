@@ -193,6 +193,19 @@ export class CommentService {
       if (!hasViewAll && !isMember) {
         throw new Error('Forbidden. You do not have access to this board chat.');
       }
+    } else if (canonicalScope === 'card') {
+      const card = await prisma.card.findUnique({
+        where: { id: scopeId },
+        select: { id: true, boardId: true },
+      });
+      if (!card) {
+        throw new Error('Card not found.');
+      }
+      const hasViewAll = await hasPermission(userId, PERMISSIONS.BOARDS_VIEW_ALL);
+      const isMember = await boardMemberService.isBoardMember(card.boardId, userId);
+      if (!hasViewAll && !isMember) {
+        throw new Error('Forbidden. You do not have access to this card comments.');
+      }
     }
 
     const morphTypes = getMorphTypes(canonicalScope);
@@ -254,6 +267,19 @@ export class CommentService {
       const isMember = await boardMemberService.isBoardMember(input.commentableId, userId);
       if (!hasViewAll && !isMember) {
         throw new Error('Forbidden. You do not have permission to post in this chat.');
+      }
+    } else if (canonicalScope === 'card') {
+      const card = await prisma.card.findUnique({
+        where: { id: input.commentableId },
+        select: { id: true, boardId: true },
+      });
+      if (!card) {
+        throw new Error('Card not found.');
+      }
+      const hasViewAll = await hasPermission(userId, PERMISSIONS.BOARDS_VIEW_ALL);
+      const isMember = await boardMemberService.isBoardMember(card.boardId, userId);
+      if (!hasViewAll && !isMember) {
+        throw new Error('Forbidden. You do not have permission to post comments on this card.');
       }
     }
 

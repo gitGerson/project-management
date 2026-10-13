@@ -1,0 +1,641 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import type { CardDTO, UpdateCardInput } from '../types';
+import type { ListDTO } from '@/modules/lists/types';
+import { CardCommentsSection } from './CardCommentsSection';
+import {
+  X,
+  AlignLeft,
+  Columns3,
+  Calendar,
+  User,
+  Clock,
+  Pencil,
+  Check,
+  Trash2,
+  AlertTriangle,
+  ChevronDown,
+  MessageSquare,
+  Sparkles,
+} from 'lucide-react';
+
+interface CardDetailModalProps {
+  isOpen: boolean;
+  card: CardDTO | null;
+  lists: ListDTO[];
+  canUpdate?: boolean;
+  canDelete?: boolean;
+  currentUserId: number;
+  currentUserName?: string;
+  onClose: () => void;
+  onUpdateCard: (cardId: number, input: UpdateCardInput) => Promise<boolean>;
+  onDeleteCard: (cardId: number) => Promise<boolean>;
+  onMoveCardToList?: (cardId: number, targetListId: number) => Promise<boolean>;
+}
+
+export const CardDetailModal: React.FC<CardDetailModalProps> = ({
+  isOpen,
+  card,
+  lists,
+  canUpdate = true,
+  canDelete = true,
+  currentUserId,
+  currentUserName = 'Me',
+  onClose,
+  onUpdateCard,
+  onDeleteCard,
+  onMoveCardToList,
+}) => {
+  const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
+  const [commentsCount, setCommentsCount] = useState(0);
+
+  // Title editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Description editing state
+  const [isEditingDesc, setIsEditingDesc] = useState(false);
+  const [descValue, setDescValue] = useState('');
+  const descTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Delete confirmation
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // List selector dropdown
+  const [isListMenuOpen, setIsListMenuOpen] = useState(false);
+  const listMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Sync internal state when card changes
+  useEffect(() => {
+    if (card) {
+      setTitleValue(card.title);
+      setDescValue(card.description || '');
+      setIsEditingTitle(false);
+      setIsEditingDesc(false);
+      setShowConfirmDelete(false);
+      setIsListMenuOpen(false);
+    }
+  }, [card]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        if (isEditingTitle) {
+          setIsEditingTitle(false);
+          setTitleValue(card?.title || '');
+          return;
+        }
+        if (isEditingDesc) {
+          setIsEditingDesc(false);
+          setDescValue(card?.description || '');
+          return;
+        }
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isEditingTitle, isEditingDesc, card, onClose]);
+
+  // Close list dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (listMenuRef.current && !listMenuRef.current.contains(e.target as Node)) {
+        setIsListMenuOpen(false);
+      }
+    };
+    if (isListMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isListMenuOpen]);
+
+  // Focus title input on edit
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [isEditingTitle]);
+
+  // Focus description textarea on edit
+  useEffect(() => {
+    if (isEditingDesc && descTextareaRef.current) {
+      descTextareaRef.current.focus();
+    }
+  }, [isEditingDesc]);
+
+  if (!mounted || !isOpen || !card) {
+    return null;
+  }
+
+  const currentList = lists.find((l) => l.id === card.listId);
+
+  // Handle title save
+  const handleSaveTitle = async () => {
+    const trimmed = titleValue.trim();
+    if (!trimmed || trimmed === card.title) {
+      setTitleValue(card.title);
+      setIsEditingTitle(false);
+      return;
+    }
+
+    setIsSaving(true);
+    const success = await onUpdateCard(card.id, { title: trimmed });
+    setIsSaving(false);
+
+    if (success) {
+      setIsEditingTitle(false);
+    } else {
+      setTitleValue(card.title);
+    }
+  };
+
+  // Handle description save
+  const handleSaveDescription = async () => {
+    const trimmed = descValue.trim();
+    const newDesc = trimmed.length > 0 ? trimmed : null;
+    if (newDesc === card.description) {
+      setIsEditingDesc(false);
+      return;
+    }
+
+    setIsSaving(true);
+    const success = await onUpdateCard(card.id, { description: newDesc });
+    setIsSaving(false);
+
+    if (success) {
+      setIsEditingDesc(false);
+    } else {
+      setDescValue(card.description || '');
+    }
+  };
+
+  // Handle move list
+  const handleSelectList = async (targetListId: number) => {
+    if (targetListId === card.listId) {
+      setIsListMenuOpen(false);
+      return;
+    }
+    setIsListMenuOpen(false);
+    if (onMoveCardToList) {
+      await onMoveCardToList(card.id, targetListId);
+    }
+  };
+
+  // Handle delete
+  const handleDeleteCard = async () => {
+    setIsDeleting(true);
+    const success = await onDeleteCard(card.id);
+    setIsDeleting(false);
+    if (success) {
+      onClose();
+    }
+  };
+
+  const formatDate = (isoStr: string) => {
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return isoStr;
+    }
+  };
+
+  const creatorInitial = card.owner?.name
+    ? card.owner.name.trim()[0].toUpperCase()
+    : 'U';
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="card-detail-title"
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-200/90 w-[95vw] max-w-7xl h-[90vh] max-h-[920px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+        {/* Top Header Bar */}
+        <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* List Selector / Badge */}
+            <div className="relative" ref={listMenuRef}>
+              <button
+                type="button"
+                onClick={() => canUpdate && setIsListMenuOpen((prev) => !prev)}
+                disabled={!canUpdate || lists.length <= 1}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                  canUpdate && lists.length > 1
+                    ? 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 cursor-pointer'
+                    : 'bg-gray-50 text-gray-600 border-gray-200 cursor-default'
+                }`}
+                title={canUpdate && lists.length > 1 ? 'Pindahkan ke daftar lain' : undefined}
+              >
+                <Columns3 className="w-3.5 h-3.5 text-gray-500" />
+                <span className="truncate max-w-[150px]">
+                  {currentList?.title || 'Daftar'}
+                </span>
+                {canUpdate && lists.length > 1 && (
+                  <ChevronDown className="w-3 h-3 text-gray-400" />
+                )}
+              </button>
+
+              {/* List Dropdown Menu */}
+              {isListMenuOpen && (
+                <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200/90 rounded-xl shadow-xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="px-2.5 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    Pindahkan ke:
+                  </div>
+                  {lists.map((l) => (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => handleSelectList(l.id)}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
+                        l.id === card.listId
+                          ? 'bg-emerald-50 text-emerald-700 font-semibold'
+                          : 'hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      <span className="truncate">{l.title}</span>
+                      {l.id === card.listId && (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Status Badge */}
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              {card.status || 'Active'}
+            </span>
+          </div>
+
+          {/* Right Header Controls: Delete & Close */}
+          <div className="flex items-center gap-1.5">
+            {canDelete && (
+              <div className="relative">
+                {showConfirmDelete ? (
+                  <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-xl p-1 animate-in fade-in duration-100">
+                    <span className="text-[11px] font-semibold text-red-700 pl-1.5">
+                      Hapus kartu?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleDeleteCard}
+                      disabled={isDeleting}
+                      className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      {isDeleting ? '...' : 'Ya'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmDelete(false)}
+                      className="px-2 py-0.5 bg-white text-gray-600 hover:bg-gray-100 text-[11px] font-medium rounded-lg transition-colors cursor-pointer border border-gray-200"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmDelete(true)}
+                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                    title="Hapus kartu"
+                    aria-label="Delete card"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+              title="Tutup (Esc)"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Tab Switcher (< lg) */}
+        <div className="lg:hidden flex items-center border-b border-gray-100 bg-gray-50/60 px-4 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('details')}
+            className={`flex-1 py-2.5 text-xs font-bold text-center border-b-2 transition-colors ${
+              activeTab === 'details'
+                ? 'border-emerald-600 text-emerald-700 bg-white'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            Konten Kartu
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('comments')}
+            className={`flex-1 py-2.5 text-xs font-bold text-center border-b-2 transition-colors flex items-center justify-center gap-1.5 ${
+              activeTab === 'comments'
+                ? 'border-emerald-600 text-emerald-700 bg-white'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <span>Komentar</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
+              {commentsCount}
+            </span>
+          </button>
+        </div>
+
+        {/* Modal Main Body (65% Content / 35% Comments Desktop Split) */}
+        <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+          {/* Left Column: 65% Card Content */}
+          <div
+            className={`lg:w-[65%] w-full h-full overflow-y-auto flex flex-col p-5 sm:p-7 border-r border-gray-100 bg-white ${
+              activeTab !== 'details' ? 'hidden lg:flex' : 'flex'
+            }`}
+          >
+            {/* Card Title */}
+            <div className="mb-6">
+              {isEditingTitle && canUpdate ? (
+                <div className="flex items-start gap-2">
+                  <input
+                    ref={titleInputRef}
+                    type="text"
+                    value={titleValue}
+                    onChange={(e) => setTitleValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveTitle();
+                      if (e.key === 'Escape') {
+                        setTitleValue(card.title);
+                        setIsEditingTitle(false);
+                      }
+                    }}
+                    disabled={isSaving}
+                    className="w-full text-lg sm:text-xl font-bold text-gray-900 bg-gray-50 border border-emerald-500 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    placeholder="Judul kartu..."
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveTitle}
+                    disabled={isSaving}
+                    className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors cursor-pointer shrink-0"
+                    title="Simpan judul"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTitleValue(card.title);
+                      setIsEditingTitle(false);
+                    }}
+                    className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl transition-colors cursor-pointer shrink-0"
+                    title="Batal"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="group flex items-start justify-between gap-3">
+                  <h2
+                    id="card-detail-title"
+                    onClick={() => canUpdate && setIsEditingTitle(true)}
+                    className={`text-lg sm:text-2xl font-bold text-gray-900 leading-snug break-words ${
+                      canUpdate ? 'cursor-pointer hover:text-emerald-700 transition-colors' : ''
+                    }`}
+                    title={canUpdate ? 'Klik untuk mengubah judul' : undefined}
+                  >
+                    {card.title}
+                  </h2>
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingTitle(true)}
+                      className="p-1.5 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all shrink-0 cursor-pointer"
+                      title="Ubah judul"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Properties Information Card */}
+            <div className="bg-gray-50/80 border border-gray-100 rounded-2xl p-4 sm:p-5 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Creator */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center overflow-hidden shrink-0 ring-2 ring-white shadow-2xs">
+                    {card.owner?.profilePicture ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={card.owner.profilePicture}
+                        alt={card.owner.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>{creatorInitial}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                      Dibuat oleh
+                    </span>
+                    <span className="block text-xs font-bold text-gray-800 truncate">
+                      {card.owner?.name || 'User'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* List Column */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-white border border-gray-200/80 text-gray-600 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Columns3 className="w-4 h-4 text-gray-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                      Daftar
+                    </span>
+                    <span className="block text-xs font-bold text-gray-800 truncate">
+                      {currentList?.title || 'Unknown List'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Created At */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-white border border-gray-200/80 text-gray-600 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Calendar className="w-4 h-4 text-gray-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                      Dibuat pada
+                    </span>
+                    <span className="block text-xs font-medium text-gray-700">
+                      {formatDate(card.createdAt)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Updated At */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-white border border-gray-200/80 text-gray-600 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Clock className="w-4 h-4 text-gray-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                      Terakhir diubah
+                    </span>
+                    <span className="block text-xs font-medium text-gray-700">
+                      {formatDate(card.updatedAt)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Description Section */}
+            <div className="flex-1 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <AlignLeft className="w-4 h-4 text-gray-600" />
+                  <h3 className="text-xs sm:text-sm font-bold text-gray-900 uppercase tracking-wider">
+                    Deskripsi
+                  </h3>
+                </div>
+
+                {!isEditingDesc && canUpdate && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingDesc(true)}
+                    className="px-2.5 py-1 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+                  >
+                    {card.description ? 'Ubah' : 'Tambah'}
+                  </button>
+                )}
+              </div>
+
+              {isEditingDesc && canUpdate ? (
+                <div className="flex flex-col gap-2.5">
+                  <textarea
+                    ref={descTextareaRef}
+                    rows={6}
+                    value={descValue}
+                    onChange={(e) => setDescValue(e.target.value)}
+                    disabled={isSaving}
+                    placeholder="Tambahkan deskripsi yang lebih terperinci mengenai kartu ini..."
+                    className="w-full text-xs sm:text-sm text-gray-800 bg-gray-50 border border-emerald-500 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 leading-relaxed resize-y"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveDescription}
+                      disabled={isSaving}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      {isSaving ? 'Menyimpan...' : 'Simpan Deskripsi'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDescValue(card.description || '');
+                        setIsEditingDesc(false);
+                      }}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                </div>
+              ) : card.description ? (
+                <div
+                  onClick={() => canUpdate && setIsEditingDesc(true)}
+                  className={`p-4 bg-gray-50/70 border border-gray-100 rounded-2xl text-xs sm:text-sm text-gray-800 leading-relaxed whitespace-pre-wrap ${
+                    canUpdate ? 'cursor-pointer hover:border-gray-200 transition-colors' : ''
+                  }`}
+                  title={canUpdate ? 'Klik untuk mengubah deskripsi' : undefined}
+                >
+                  {card.description}
+                </div>
+              ) : (
+                <div
+                  onClick={() => canUpdate && setIsEditingDesc(true)}
+                  className={`p-6 border border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-center text-gray-400 ${
+                    canUpdate ? 'cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors' : ''
+                  }`}
+                >
+                  <p className="text-xs font-medium text-gray-500">
+                    Belum ada deskripsi untuk kartu ini.
+                  </p>
+                  {canUpdate && (
+                    <p className="text-[11px] text-emerald-600 font-semibold mt-1">
+                      Klik di sini untuk menambahkan deskripsi...
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: 35% Comments Pane */}
+          <div
+            className={`lg:w-[35%] w-full h-full flex flex-col bg-[#f8fafc] shrink-0 min-h-0 ${
+              activeTab !== 'comments' ? 'hidden lg:flex' : 'flex'
+            }`}
+          >
+            <CardCommentsSection
+              cardId={card.id}
+              currentUserId={currentUserId}
+              currentUserName={currentUserName}
+              onCommentsCountChange={setCommentsCount}
+            />
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+

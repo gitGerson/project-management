@@ -16,6 +16,7 @@ import {
   AlignLeft,
   ArrowUp,
   ArrowDown,
+  Eye,
 } from 'lucide-react';
 import type { CardDTO } from '../types';
 
@@ -30,6 +31,7 @@ interface KanbanCardProps {
   onDeleteCard: (cardId: number) => Promise<boolean>;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
+  onCardClick?: (card: CardDTO) => void;
   isOverlay?: boolean;
 }
 
@@ -41,6 +43,7 @@ export function KanbanCard({
   onDeleteCard,
   onMoveUp,
   onMoveDown,
+  onCardClick,
   isOverlay = false,
 }: KanbanCardProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -193,6 +196,14 @@ export function KanbanCard({
       style={style}
       {...attributes}
       {...listeners}
+      onClick={(e) => {
+        if (isOverlay || isEditingTitle) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('input') || target.closest('textarea')) {
+          return;
+        }
+        onCardClick?.(card);
+      }}
       className={`group relative bg-white border border-gray-200/90 rounded-xl p-3 shadow-xs hover:border-gray-300 hover:shadow-xs transition-shadow cursor-grab active:cursor-grabbing select-none touch-manipulation ${
         isOverlay ? 'shadow-xl ring-2 ring-emerald-500/20 rotate-1 cursor-grabbing' : ''
       }`}
@@ -201,9 +212,13 @@ export function KanbanCard({
         {/* Card Title or Inline Title Edit */}
         <div
           className="flex-1 min-w-0"
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
+          {...(isEditingTitle
+            ? {
+                onClick: (e: React.MouseEvent) => e.stopPropagation(),
+                onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+                onTouchStart: (e: React.TouchEvent) => e.stopPropagation(),
+              }
+            : {})}
         >
           {isEditingTitle && canUpdate ? (
             <div className="flex items-center gap-1.5">
@@ -228,14 +243,15 @@ export function KanbanCard({
             </div>
           ) : (
             <p
-              onClick={() => {
+              onDoubleClick={(e) => {
                 if (canUpdate) {
+                  e.stopPropagation();
                   setTitleInput(card.title);
                   setIsEditingTitle(true);
                 }
               }}
               className="text-xs sm:text-[13px] font-medium text-gray-800 leading-snug break-words"
-              title={canUpdate ? 'Click to rename' : card.title}
+              title={canUpdate ? 'Double-click to rename, click to view detail' : card.title}
             >
               {card.title}
             </p>
@@ -285,6 +301,18 @@ export function KanbanCard({
                   }}
                   className="w-36 bg-white border border-gray-200/90 rounded-xl shadow-xl p-1 z-50 text-xs text-gray-700 animate-in fade-in duration-150 select-none"
                 >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onCardClick?.(card);
+                    }}
+                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-emerald-50 flex items-center gap-2 cursor-pointer text-emerald-800 font-medium"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Buka Detail</span>
+                  </button>
+
                   {canUpdate && (
                     <button
                       type="button"

@@ -107,6 +107,9 @@ export default async function BoardDetailPage({ params }: BoardPageProps) {
             permissions={listPermissions}
             initialCards={cards}
             cardPermissions={cardPermissions}
+            currentUser={
+              user ? { id: user.id, name: user.name, username: user.username } : undefined
+            }
           />
         </main>
 

@@ -43,7 +43,10 @@ import {
   moveCardAction,
   useRealtimeCards,
   KanbanCard,
+  CardDetailModal,
+  UpdateCardInput,
 } from '@/modules/cards';
+import { getCurrentChatUserAction } from '@/modules/chat/actions';
 import { useRealtimeLists } from '../hooks/useRealtimeLists';
 import { Layers } from 'lucide-react';
 
@@ -53,6 +56,11 @@ interface BoardKanbanViewProps {
   permissions: ListPermissionsDTO;
   initialCards?: CardDTO[];
   cardPermissions?: CardPermissionsDTO;
+  currentUser?: {
+    id: number;
+    name?: string;
+    username: string;
+  };
 }
 
 /**
@@ -89,11 +97,43 @@ export function BoardKanbanView({
   permissions,
   initialCards = [],
   cardPermissions = { canCreate: true, canUpdate: true, canDelete: true },
+  currentUser,
 }: BoardKanbanViewProps) {
   const [lists, setLists] = useState<ListDTO[]>(initialLists);
   const [items, setItems] = useState<Record<number, CardDTO[]>>(() =>
     groupCardsByList(initialLists, initialCards)
   );
+
+  // Selected Card for Detail Modal (65% content / 35% comments)
+  const [selectedCardId, setSelectedCardId] = useState<number | null>(null);
+  const [currentChatUser, setCurrentChatUser] = useState<{
+    id: number;
+    name?: string;
+    username: string;
+  } | null>(
+    currentUser
+      ? { id: currentUser.id, name: currentUser.name, username: currentUser.username }
+      : null
+  );
+
+  useEffect(() => {
+    if (!currentChatUser) {
+      getCurrentChatUserAction().then((res) => {
+        if (res.success && res.data) {
+          setCurrentChatUser({ id: res.data.userId, username: res.data.username });
+        }
+      });
+    }
+  }, [currentChatUser]);
+
+  const selectedCard = useMemo(() => {
+    if (!selectedCardId) return null;
+    for (const listCards of Object.values(items)) {
+      const found = listCards.find((c) => c.id === selectedCardId);
+      if (found) return found;
+    }
+    return null;
+  }, [items, selectedCardId]);
 
   // Synchronous refs to prevent stale state closures during rapid drag events
   const itemsRef = useRef<Record<number, CardDTO[]>>(items);
@@ -559,6 +599,60 @@ export function BoardKanbanView({
     return true;
   };
 
+  const handleUpdateCardDetails = async (
+    cardId: number,
+    input: UpdateCardInput
+  ): Promise<boolean> => {
+    const res = await updateCardAction(cardId, input);
+    if (res.success && res.data) {
+      const updated = res.data;
+      setItems((prev) => {
+        const next = { ...prev };
+        for (const lId in next) {
+          next[lId] = next[lId].map((c) => (c.id === updated.id ? updated : c));
+        }
+        itemsRef.current = next;
+        return next;
+      });
+      return true;
+    } else {
+      alert(res.message || 'Gagal memperbarui kartu');
+      return false;
+    }
+  };
+
+  const handleMoveCardToListFromModal = async (
+    cardId: number,
+    targetListId: number
+  ): Promise<boolean> => {
+    const targetCards = items[targetListId] || [];
+    const lastCard = targetCards[targetCards.length - 1];
+    const res = await moveCardAction({
+      cardId,
+      targetListId,
+      previousCardId: lastCard?.id || null,
+    });
+
+    if (res.success && res.data) {
+      const moved = res.data;
+      setItems((prev) => {
+        const next = { ...prev };
+        for (const lId in next) {
+          next[lId] = next[lId].filter((c) => c.id !== cardId);
+        }
+        const targetList = [...(next[targetListId] || [])];
+        targetList.push(moved);
+        next[targetListId] = targetList.sort(compareCards);
+        itemsRef.current = next;
+        return next;
+      });
+      return true;
+    } else {
+      alert(res.message || 'Gagal memindahkan kartu');
+      return false;
+    }
+  };
+
   const handleMoveCardStep = async (cardId: number, direction: 'up' | 'down') => {
     const containerId = findContainer(`card-${cardId}`);
     if (!containerId) return;
@@ -929,6 +1023,7 @@ export function BoardKanbanView({
               onDeleteCard={handleDeleteCard}
               onMoveCardUp={(cardId) => handleMoveCardStep(cardId, 'up')}
               onMoveCardDown={(cardId) => handleMoveCardStep(cardId, 'down')}
+              onCardClick={(card) => setSelectedCardId(card.id)}
             />
           ))}
 
@@ -979,6 +1074,27 @@ export function BoardKanbanView({
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* Card Detail Modal (65% Content / 35% Comments) */}
+      {selectedCard && (
+        <CardDetailModal
+          isOpen={Boolean(selectedCard)}
+          card={selectedCard}
+          lists={uniqueLists}
+          canUpdate={cardPermissions.canUpdate}
+          canDelete={cardPermissions.canDelete}
+          currentUserId={currentChatUser?.id || 0}
+          currentUserName={currentChatUser?.name || currentChatUser?.username || 'Me'}
+          onClose={() => setSelectedCardId(null)}
+          onUpdateCard={handleUpdateCardDetails}
+          onDeleteCard={async (cId) => {
+            const success = await handleDeleteCard(cId);
+            if (success) setSelectedCardId(null);
+            return success;
+          }}
+          onMoveCardToList={handleMoveCardToListFromModal}
+        />
+      )}
     </DndContext>
   );
 }
