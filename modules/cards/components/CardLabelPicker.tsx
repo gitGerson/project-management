@@ -38,15 +38,19 @@ interface CardLabelPickerProps {
   card: CardDTO;
   canUpdate?: boolean;
   onCardUpdated: (updatedCard: CardDTO) => void;
+  hideHeader?: boolean;
+  defaultExpanded?: boolean;
 }
 
 export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
   card,
   canUpdate = true,
   onCardUpdated,
+  hideHeader = false,
+  defaultExpanded = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [boardLabels, setBoardLabels] = useState<LabelDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -503,10 +507,12 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
   );
 
   return (
-    <div className="mb-5">
-      <span className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-        Labels
-      </span>
+    <div className={hideHeader ? 'inline-flex items-center' : 'mb-5'}>
+      {!hideHeader && (
+        <span className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+          Labels
+        </span>
+      )}
 
       <div ref={containerRef} className="flex flex-wrap items-center gap-1.5 sm:gap-2">
         {/* Applied Labels */}
@@ -556,7 +562,7 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
             }}
             type="button"
             onClick={() => setIsOpen((prev) => !prev)}
-            className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 border border-gray-200/80 flex items-center justify-center transition-colors cursor-pointer shadow-2xs shrink-0"
+            className="w-7 h-7 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
             title="Add label"
             aria-label="Add label"
           >
@@ -564,7 +570,7 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
           </button>
         )}
 
-        {!canUpdate && cardLabels.length === 0 && (
+        {!canUpdate && cardLabels.length === 0 && !hideHeader && (
           <span className="text-xs text-gray-400 italic">No labels</span>
         )}
       </div>

@@ -378,69 +378,94 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
               activeTab !== 'details' ? 'hidden lg:flex' : 'flex'
             }`}
           >
-            {/* Card Title */}
+            {/* Card Title & Labels */}
             <div className="mb-4">
               {isEditingTitle && canUpdate ? (
-                <div className="flex items-start gap-2">
-                  <input
-                    ref={titleInputRef}
-                    type="text"
-                    value={titleValue}
-                    onChange={(e) => setTitleValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSaveTitle();
-                      if (e.key === 'Escape') {
-                        setTitleValue(card.title);
-                        setIsEditingTitle(false);
-                      }
-                    }}
-                    disabled={isSaving}
-                    className="w-full text-lg sm:text-xl font-bold text-gray-900 bg-gray-50 border border-emerald-500 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                    placeholder="Card title..."
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveTitle}
-                    disabled={isSaving}
-                    className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors cursor-pointer shrink-0"
-                    title="Save title"
-                  >
-                    <Check className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTitleValue(card.title);
-                      setIsEditingTitle(false);
-                    }}
-                    className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl transition-colors cursor-pointer shrink-0"
-                    title="Cancel"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <div className="group flex items-start justify-between gap-3">
-                  <h2
-                    id="card-detail-title"
-                    onClick={() => canUpdate && setIsEditingTitle(true)}
-                    className={`text-lg sm:text-2xl font-bold text-gray-900 leading-snug break-words ${
-                      canUpdate ? 'cursor-pointer hover:text-emerald-700 transition-colors' : ''
-                    }`}
-                    title={canUpdate ? 'Click to edit title' : undefined}
-                  >
-                    {card.title}
-                  </h2>
-                  {canUpdate && (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <input
+                      ref={titleInputRef}
+                      type="text"
+                      value={titleValue}
+                      onChange={(e) => setTitleValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveTitle();
+                        if (e.key === 'Escape') {
+                          setTitleValue(card.title);
+                          setIsEditingTitle(false);
+                        }
+                      }}
+                      disabled={isSaving}
+                      className="w-full text-lg sm:text-xl font-bold text-gray-900 bg-gray-50 border border-emerald-500 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      placeholder="Card title..."
+                    />
                     <button
                       type="button"
-                      onClick={() => setIsEditingTitle(true)}
-                      className="p-1.5 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all shrink-0 cursor-pointer"
-                      title="Edit title"
+                      onClick={handleSaveTitle}
+                      disabled={isSaving}
+                      className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors cursor-pointer shrink-0"
+                      title="Save title"
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Check className="w-4 h-4" />
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTitleValue(card.title);
+                        setIsEditingTitle(false);
+                      }}
+                      className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl transition-colors cursor-pointer shrink-0"
+                      title="Cancel"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div>
+                    <CardLabelPicker
+                      card={card}
+                      canUpdate={canUpdate}
+                      onCardUpdated={(updated) => onCardUpdated?.(updated)}
+                      hideHeader
+                      defaultExpanded={false}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+                  <div className="group/title inline-flex items-center">
+                    <h2
+                      id="card-detail-title"
+                      onClick={() => canUpdate && setIsEditingTitle(true)}
+                      className={`text-lg sm:text-2xl font-bold text-gray-900 leading-snug break-words ${
+                        canUpdate ? 'cursor-pointer hover:text-emerald-700 transition-colors' : ''
+                      }`}
+                      title={canUpdate ? 'Click to edit title' : undefined}
+                    >
+                      {card.title}
+                    </h2>
+
+                    {canUpdate && (
+                      <div className="overflow-hidden flex items-center transition-all duration-300 ease-out max-w-0 opacity-0 pointer-events-none group-hover/title:max-w-8 group-hover/title:opacity-100 group-hover/title:ml-1.5 group-hover/title:pointer-events-auto">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingTitle(true)}
+                          className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors shrink-0 cursor-pointer"
+                          title="Edit title"
+                          aria-label="Edit title"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <CardLabelPicker
+                    card={card}
+                    canUpdate={canUpdate}
+                    onCardUpdated={(updated) => onCardUpdated?.(updated)}
+                    hideHeader
+                    defaultExpanded={false}
+                  />
                 </div>
               )}
             </div>
@@ -474,13 +499,6 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                 variant="property"
               />
             </div>
-
-            {/* Labels Section (Full width, wrapping naturally without gap) */}
-            <CardLabelPicker
-              card={card}
-              canUpdate={canUpdate}
-              onCardUpdated={(updated) => onCardUpdated?.(updated)}
-            />
 
             {/* Description Section */}
             <div className="flex-1 flex flex-col">
