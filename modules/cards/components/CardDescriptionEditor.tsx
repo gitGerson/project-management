@@ -1,12 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useEditor, EditorContent, posToDOMRect } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+import ImageExtension from '@tiptap/extension-image';
+import { uploadFileDirectly } from '@/lib/upload-client';
 import {
   Bold,
   Italic,
@@ -23,7 +26,21 @@ import {
   Unlink,
   Check,
   X,
+  Image as ImageIcon,
+  Paperclip,
+  Loader2,
+  Download,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+
+function formatFileSize(bytes: number): string {
+  if (!bytes || bytes <= 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 interface CardDescriptionEditorProps {
   cardId: number;
@@ -57,7 +74,110 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
   onEditingChange,
 }) => {
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(false);
+  const [contentHeight, setContentHeight] = useState<number>(0);
+  const effectivelyExpanded = isEditing || isExpanded;
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentMeasureRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<ReturnType<typeof useEditor>>(null);
+
+  // Measure content overflow to conditionally show gradient overlay and expand button
+  useEffect(() => {
+    const el = contentMeasureRef.current;
+    if (!el) return;
+
+    const checkOverflow = () => {
+      if (contentMeasureRef.current) {
+        const sh = contentMeasureRef.current.scrollHeight;
+        setContentHeight(sh);
+        // If content height exceeds 180px threshold, allow expanding
+        setCanExpand(sh > 195);
+      }
+    };
+
+    checkOverflow();
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(checkOverflow);
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+  }, [initialDescription]);
+
+  // Close lightbox on Escape key without bubbling to parent modal
+  useEffect(() => {
+    if (!lightboxImage) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        setLightboxImage(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [lightboxImage]);
+
+  const handleUploadFiles = useCallback(
+    async (files: File[]) => {
+      const currentEditor = editorRef.current;
+      if (!files.length || !currentEditor || currentEditor.isDestroyed) return;
+
+      setIsUploading(true);
+      setUploadError(null);
+
+      try {
+        for (const file of files) {
+          const isImg = file.type.startsWith('image/');
+          const res = await uploadFileDirectly(file, { folder: 'card-attachments' });
+
+          if (isImg) {
+            currentEditor
+              .chain()
+              .focus()
+              .setImage({ src: res.publicUrl, alt: res.fileName })
+              .run();
+          } else {
+            currentEditor
+              .chain()
+              .focus()
+              .insertContent({
+                type: 'paragraph',
+                content: [
+                  {
+                    type: 'text',
+                    marks: [
+                      {
+                        type: 'link',
+                        attrs: {
+                          href: res.publicUrl,
+                          target: '_blank',
+                          rel: 'noopener noreferrer',
+                          class: 'attachment-file-badge',
+                        },
+                      },
+                    ],
+                    text: `📎 ${res.fileName} (${formatFileSize(res.fileSize)})`,
+                  },
+                ],
+              })
+              .run();
+          }
+        }
+      } catch (err) {
+        const error = err as Error;
+        setUploadError(error.message || 'Failed to upload attachment');
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    []
+  );
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -69,6 +189,14 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
         },
       }),
       Underline,
+      ImageExtension.configure({
+        inline: false,
+        allowBase64: true,
+        HTMLAttributes: {
+          class:
+            'rounded-lg max-w-full max-h-[160px] object-contain my-2 mx-1 border border-gray-200/80 shadow-2xs cursor-pointer hover:border-gray-300 hover:shadow-md transition-all',
+        },
+      }),
       Link.configure({
         openOnClick: false,
         autolink: true,
@@ -84,9 +212,69 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
     editorProps: {
       attributes: {
         class:
-          'tiptap tiptap-content focus:outline-none max-h-[420px] overflow-y-auto leading-relaxed select-text text-xs sm:text-[13px]',
+          'tiptap tiptap-content focus:outline-none leading-relaxed select-text text-xs sm:text-[13px] px-1',
+      },
+      handlePaste: (_view, event) => {
+        if (!canUpdate) return false;
+        const files = event.clipboardData?.files;
+        if (!files || files.length === 0) return false;
+
+        event.preventDefault();
+        if (!isEditing) {
+          onEditingChange(true);
+        }
+        handleUploadFiles(Array.from(files));
+        return true;
+      },
+      handleDrop: (_view, event, _slice, moved) => {
+        if (moved || !canUpdate) return false;
+        const files = event.dataTransfer?.files;
+        if (!files || files.length === 0) return false;
+
+        event.preventDefault();
+        if (!isEditing) {
+          onEditingChange(true);
+        }
+        handleUploadFiles(Array.from(files));
+        return true;
+      },
+      handleClick: (_view, _pos, event) => {
+        const target = event.target as HTMLElement | null;
+        const img = target?.closest('img');
+        if (img && img.src) {
+          event.preventDefault();
+          event.stopPropagation();
+          setLightboxImage({
+            src: img.src,
+            alt: img.getAttribute('alt') || 'Attachment preview',
+          });
+          return true;
+        }
+        return false;
       },
       handleDOMEvents: {
+        click: (_view, event) => {
+          const target = event.target as HTMLElement | null;
+          const img = target?.closest('img');
+          if (img && img.src) {
+            event.preventDefault();
+            event.stopPropagation();
+            setLightboxImage({
+              src: img.src,
+              alt: img.getAttribute('alt') || 'Attachment preview',
+            });
+            return true;
+          }
+
+          if (!isEditing) {
+            const link = target?.closest('a');
+            if (link && link.href) {
+              window.open(link.href, '_blank', 'noopener,noreferrer');
+              return true;
+            }
+          }
+          return false;
+        },
         keydown: (_view, event) => {
           if (event.key === 'Escape') {
             event.preventDefault();
@@ -103,6 +291,11 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
       },
     },
   });
+
+  // Store latest editor instance in ref for async upload handlers
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
 
   // Sync editable state with isEditing prop
   useEffect(() => {
@@ -276,12 +469,28 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
     [isEditing]
   );
 
+  const handleContainerPaste = useCallback(
+    (e: React.ClipboardEvent<HTMLDivElement>) => {
+      if (!canUpdate) return;
+      const files = e.clipboardData?.files;
+      if (files && files.length > 0) {
+        e.preventDefault();
+        if (!isEditing) {
+          onEditingChange(true);
+        }
+        handleUploadFiles(Array.from(files));
+      }
+    },
+    [canUpdate, isEditing, onEditingChange, handleUploadFiles]
+  );
+
   // Empty state in view mode
   const hasContent = initialDescription && initialDescription.trim().length > 0;
 
   if (!isEditing && !hasContent) {
     return (
       <div
+        onPaste={handleContainerPaste}
         onClick={() => canUpdate && onEditingChange(true)}
         className={`px-1.5 py-2 text-xs rounded-lg transition-colors select-none ${
           canUpdate
@@ -290,7 +499,7 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
         }`}
       >
         {canUpdate ? (
-          <span>Add a more detailed description...</span>
+          <span>Add a more detailed description or paste files/images...</span>
         ) : (
           <span>No description provided.</span>
         )}
@@ -299,7 +508,7 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
   }
 
   return (
-    <div ref={containerRef} className="flex flex-col">
+    <div ref={containerRef} onPaste={handleContainerPaste} className="flex flex-col">
       {/* TipTap Bubble Menu (Floats centered above selected/blocked text) */}
       {editor && isEditing && (
         <BubbleMenu
@@ -495,35 +704,117 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
       )}
 
       {/* Editor Content Area */}
-      <div
-        onClick={() => {
-          if (!isEditing && canUpdate) {
-            onEditingChange(true);
-          }
-        }}
-        className={`rounded-lg transition-all ${
-          isEditing
-            ? 'min-h-[100px] p-3 bg-white border border-emerald-500/80 ring-2 ring-emerald-500/10 shadow-2xs'
-            : 'px-1.5 py-1 bg-transparent border border-transparent'
-        } ${
-          !isEditing && canUpdate
-            ? 'cursor-pointer hover:bg-gray-50/60'
-            : ''
-        }`}
-        title={!isEditing && canUpdate ? 'Click to edit description' : undefined}
-      >
-        <EditorContent editor={editor} />
+      <div className="relative">
+        <div
+          ref={contentMeasureRef}
+          onClickCapture={(e) => {
+            const target = e.target as HTMLElement | null;
+            const img = target?.closest('img');
+            if (img && img.src) {
+              e.preventDefault();
+              e.stopPropagation();
+              setLightboxImage({
+                src: img.src,
+                alt: img.getAttribute('alt') || 'Attachment preview',
+              });
+            }
+          }}
+          onClick={(e) => {
+            const target = e.target as HTMLElement | null;
+            const img = target?.closest('img');
+            if (img && img.src) {
+              e.preventDefault();
+              e.stopPropagation();
+              setLightboxImage({
+                src: img.src,
+                alt: img.getAttribute('alt') || 'Attachment preview',
+              });
+              return;
+            }
+
+            if (target?.closest('a')) {
+              return;
+            }
+
+            if (!isEditing && canUpdate) {
+              onEditingChange(true);
+            }
+          }}
+          style={{
+            maxHeight: effectivelyExpanded
+              ? contentHeight > 0
+                ? `${contentHeight + 35}px`
+                : '3000px'
+              : '180px',
+          }}
+          className={`rounded-lg transition-[max-height] duration-300 ease-in-out ${
+            !effectivelyExpanded && canExpand ? 'overflow-hidden' : 'overflow-visible'
+          } ${
+            isEditing
+              ? 'min-h-[100px] p-3 bg-white border border-emerald-500/80 ring-2 ring-emerald-500/10 shadow-2xs'
+              : 'px-1.5 py-1 bg-transparent border border-transparent'
+          } ${
+            !isEditing && canUpdate
+              ? 'cursor-pointer hover:bg-gray-50/60'
+              : ''
+          }`}
+          title={!isEditing && canUpdate ? 'Click to edit description' : undefined}
+        >
+          <EditorContent editor={editor} />
+        </div>
+
+        {/* Overlay gradient with arrow down expand button */}
+        {!isEditing && canExpand && (
+          <div
+            className={`absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white via-white/80 to-transparent flex items-end justify-center pb-1.5 rounded-b-lg transition-all duration-300 ${
+              !effectivelyExpanded
+                ? 'opacity-100 translate-y-0 pointer-events-auto'
+                : 'opacity-0 translate-y-2 pointer-events-none'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 rounded-full shadow-xs text-xs font-semibold transition-all cursor-pointer group"
+              title="Show more"
+            >
+              <span>Show more</span>
+              <ChevronDown className="w-3.5 h-3.5 text-gray-500 group-hover:translate-y-0.5 transition-transform" />
+            </button>
+          </div>
+        )}
+
+        {/* Collapse button when expanded */}
+        {!isEditing && isExpanded && canExpand && (
+          <div className="flex justify-center mt-2.5 animate-in fade-in duration-200">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(false);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 rounded-full shadow-xs text-xs font-semibold transition-all cursor-pointer group"
+              title="Show less"
+            >
+              <span>Show less</span>
+              <ChevronUp className="w-3.5 h-3.5 text-gray-500 group-hover:-translate-y-0.5 transition-transform" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Action Bar (Only visible while editing) */}
       {isEditing && (
         <div className="flex flex-wrap items-center justify-between gap-2 mt-2.5">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={handleSave}
-              disabled={isSaving}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+              disabled={isSaving || isUploading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-xs disabled:opacity-50"
             >
               <Check className="w-3.5 h-3.5" />
               <span>{isSaving ? 'Saving...' : 'Save Description'}</span>
@@ -532,19 +823,157 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
             <button
               type="button"
               onClick={handleCancel}
-              disabled={isSaving}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              disabled={isSaving || isUploading}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
               <span>Cancel</span>
             </button>
+
+            <div className="w-px h-4 bg-gray-200 mx-0.5" />
+
+            {/* Image upload button */}
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={isSaving || isUploading}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-gray-700 hover:text-gray-900 bg-gray-100/90 hover:bg-gray-200/90 text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+              title="Upload image"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-gray-500" />
+              <span>Image</span>
+            </button>
+
+            {/* File upload button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isSaving || isUploading}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-gray-700 hover:text-gray-900 bg-gray-100/90 hover:bg-gray-200/90 text-xs font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+              title="Upload file (PDF, doc, zip, etc.)"
+            >
+              <Paperclip className="w-3.5 h-3.5 text-gray-500" />
+              <span>File</span>
+            </button>
+
+            {/* Uploading progress indicator */}
+            {isUploading && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-medium ml-1">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Uploading...</span>
+              </span>
+            )}
           </div>
 
           <span className="text-[11px] text-gray-400 hidden sm:inline select-none">
-            Select text to format • Ctrl+Enter to save • Esc to cancel
+            Paste images or files directly • Ctrl+Enter to save
           </span>
         </div>
       )}
+
+      {/* Hidden file pickers for direct button trigger */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files && files.length > 0) {
+            handleUploadFiles(Array.from(files));
+          }
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files && files.length > 0) {
+            handleUploadFiles(Array.from(files));
+          }
+          e.target.value = '';
+        }}
+      />
+
+      {/* Upload error banner */}
+      {uploadError && (
+        <div className="mt-2 px-2.5 py-1.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center justify-between">
+          <span className="truncate">{uploadError}</span>
+          <button
+            type="button"
+            onClick={() => setUploadError(null)}
+            className="text-red-500 hover:text-red-700 p-0.5 ml-2 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Image Lightbox Preview Modal */}
+      {lightboxImage &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Image preview"
+            className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150"
+            onClick={() => setLightboxImage(null)}
+          >
+            <div
+              className="relative max-w-5xl max-h-[92vh] flex flex-col items-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={() => setLightboxImage(null)}
+                className="absolute -top-11 right-0 p-1.5 text-white/80 hover:text-white rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
+                title="Close preview (Esc)"
+                aria-label="Close preview"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Enlarged image */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={lightboxImage.src}
+                alt={lightboxImage.alt || 'Enlarged image preview'}
+                className="max-h-[80vh] max-w-[92vw] sm:max-w-4xl rounded-xl object-contain shadow-2xl bg-black/20"
+              />
+
+              {/* Action buttons */}
+              <div className="mt-3 flex items-center gap-2.5">
+                <a
+                  href={lightboxImage.src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="px-3 py-1.5 bg-white text-gray-800 text-xs font-semibold rounded-lg hover:bg-gray-100 flex items-center gap-1.5 shadow-md transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download image</span>
+                </a>
+                <a
+                  href={lightboxImage.src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors backdrop-blur-xs"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open original</span>
+                </a>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
