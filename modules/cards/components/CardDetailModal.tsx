@@ -516,23 +516,11 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
 
             {/* Description Section */}
             <div className="flex-1 flex flex-col">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <AlignLeft className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                    Description
-                  </span>
-                </div>
-
-                {!isEditingDesc && canUpdate && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingDesc(true)}
-                    className="px-2 py-0.5 text-[11px] font-semibold text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
-                  >
-                    {card.description ? 'Edit' : 'Add'}
-                  </button>
-                )}
+              <div className="flex items-center gap-1.5 mb-2">
+                <AlignLeft className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                  Description
+                </span>
               </div>
 
               <CardDescriptionEditor

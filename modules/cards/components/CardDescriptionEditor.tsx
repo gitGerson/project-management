@@ -283,7 +283,7 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
     return (
       <div
         onClick={() => canUpdate && onEditingChange(true)}
-        className={`px-1.5 py-2 text-xs rounded-xl transition-colors select-none ${
+        className={`px-1.5 py-2 text-xs rounded-lg transition-colors select-none ${
           canUpdate
             ? 'cursor-pointer text-gray-400 hover:text-gray-600 hover:bg-gray-50/70'
             : 'text-gray-400 italic'
@@ -501,7 +501,7 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
             onEditingChange(true);
           }
         }}
-        className={`rounded-xl transition-all ${
+        className={`rounded-lg transition-all ${
           isEditing
             ? 'min-h-[100px] p-3 bg-white border border-emerald-500/80 ring-2 ring-emerald-500/10 shadow-2xs'
             : 'px-1.5 py-1 bg-transparent border border-transparent'
@@ -523,7 +523,7 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-xs disabled:opacity-50"
             >
               <Check className="w-3.5 h-3.5" />
               <span>{isSaving ? 'Saving...' : 'Save Description'}</span>
@@ -533,7 +533,7 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
               type="button"
               onClick={handleCancel}
               disabled={isSaving}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
               <span>Cancel</span>
