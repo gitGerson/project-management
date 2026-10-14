@@ -367,7 +367,7 @@ export function BoardColumn({
 
       {/* Add Card Top Action Button (Positioned below header, before cards) */}
       {cardPermissions?.canCreate && onCreateCard && !isOverlay && (
-        <div className="p-2.5 pb-1 shrink-0">
+        <div className="px-3 pt-1.5 pb-0.5 shrink-0">
           <CreateCardInlineForm
             listId={list.id}
             onCreateCard={(title) => onCreateCard(list.id, title)}
@@ -378,7 +378,7 @@ export function BoardColumn({
       {/* Cards List Body (Scrollable & Droppable) */}
       <div
         ref={setCardsContainerRef}
-        className={`flex-1 overflow-y-auto p-3 space-y-2.5 min-h-[120px] max-h-[calc(100vh-230px)] scrollbar-thin transition-colors rounded-b-2xl ${
+        className={`flex-1 overflow-y-auto px-3 pb-3 pt-1 space-y-2.5 min-h-[120px] max-h-[calc(100vh-230px)] scrollbar-thin transition-colors rounded-b-2xl ${
           isOverContainer && !isOverBottom ? 'bg-emerald-50/20' : ''
         }`}
       >

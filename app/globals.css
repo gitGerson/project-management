@@ -58,8 +58,39 @@ textarea::-moz-placeholder {
   animation: tabFadeIn 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Support for popover & dropdown entrance animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn95 {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-in.fade-in {
+  animation: fadeIn 150ms ease-out forwards;
+}
+
+.animate-in.fade-in.zoom-in-95 {
+  animation: zoomIn95 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-tab-enter {
+  .animate-tab-enter,
+  .animate-in.fade-in,
+  .animate-in.fade-in.zoom-in-95 {
     animation: none !important;
   }
 }

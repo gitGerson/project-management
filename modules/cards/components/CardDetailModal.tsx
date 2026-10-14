@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import type { CardDTO, UpdateCardInput } from '../types';
 import type { ListDTO } from '@/modules/lists/types';
@@ -20,6 +20,8 @@ import {
   ChevronDown,
 } from 'lucide-react';
 
+const emptySubscribe = () => () => {};
+
 interface CardDetailModalProps {
   isOpen: boolean;
   card: CardDTO | null;
@@ -37,7 +39,7 @@ interface CardDetailModalProps {
 
 export const CardDetailModal: React.FC<CardDetailModalProps> = ({
   isOpen,
-  card,
+  card: propCard,
   lists,
   canUpdate = true,
   canDelete = true,
@@ -49,13 +51,23 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
   onMoveCardToList,
   onCardUpdated,
 }) => {
-  const [mounted, setMounted] = useState(false);
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+  const [isVisible, setIsVisible] = useState(false);
+  const [cachedCard, setCachedCard] = useState<CardDTO | null>(propCard);
+  const isClosingRef = useRef(false);
+
+  const card = propCard || cachedCard;
+
   const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
   const [commentsCount, setCommentsCount] = useState(0);
 
   // Title editing state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [titleValue, setTitleValue] = useState('');
+  const [titleValue, setTitleValue] = useState(card?.title || '');
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Description editing state
@@ -70,26 +82,50 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
   const [isListMenuOpen, setIsListMenuOpen] = useState(false);
   const listMenuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
+  // Synchronize state during render when propCard changes
+  const [prevCardId, setPrevCardId] = useState(propCard?.id);
+  if (propCard && propCard.id !== prevCardId) {
+    setPrevCardId(propCard.id);
+    setCachedCard(propCard);
+    setTitleValue(propCard.title);
+    setIsEditingTitle(false);
+    setIsEditingDesc(false);
+    setShowConfirmDelete(false);
+    setIsListMenuOpen(false);
+  }
 
-  // Sync internal state when card changes
-  useEffect(() => {
-    if (card) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setTitleValue(card.title);
-      setIsEditingTitle(false);
-      setIsEditingDesc(false);
-      setShowConfirmDelete(false);
-      setIsListMenuOpen(false);
-    }
-  }, [card]);
+  // Dismiss with smooth ease-out transition
+  const handleDismiss = useCallback(() => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+      isClosingRef.current = false;
+    }, 200);
+  }, [onClose]);
 
-  // Lock body scroll when modal is open
+  // Synchronize isOpen to isVisible on next animation frame
   useEffect(() => {
+    let raf: number | undefined;
     if (isOpen) {
+      isClosingRef.current = false;
+      raf = requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+    } else {
+      raf = requestAnimationFrame(() => {
+        setIsVisible(false);
+      });
+    }
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [isOpen]);
+
+  // Lock body scroll when modal is open or transitioning
+  useEffect(() => {
+    if (isOpen || isVisible) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -97,7 +133,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, isVisible]);
 
   // Close on Escape key
   useEffect(() => {
@@ -112,12 +148,12 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
           setIsEditingDesc(false);
           return;
         }
-        onClose();
+        handleDismiss();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isEditingTitle, isEditingDesc, card, onClose]);
+  }, [isOpen, isEditingTitle, isEditingDesc, card, handleDismiss]);
 
   // Close list dropdown on click outside
   useEffect(() => {
@@ -140,9 +176,8 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
     }
   }, [isEditingTitle]);
 
-  if (!mounted || !isOpen || !card) {
-    return null;
-  }
+  if (!isOpen && !isVisible) return null;
+  if (!isMounted || !card) return null;
 
   const currentList = lists.find((l) => l.id === card.listId);
 
@@ -184,7 +219,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
     const success = await onDeleteCard(card.id);
     setIsDeleting(false);
     if (success) {
-      onClose();
+      handleDismiss();
     }
   };
 
@@ -193,14 +228,23 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="card-detail-title"
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-150"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 transition-opacity duration-200 ease-in-out motion-reduce:transition-none ${
+        isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}
     >
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-200/90 w-[95vw] max-w-7xl h-[90vh] max-h-[920px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+      {/* Click outside backdrop with blur */}
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-200 ease-in-out motion-reduce:transition-none"
+        onClick={handleDismiss}
+        aria-hidden="true"
+      />
+
+      {/* Modal Dialog Card */}
+      <div
+        className={`relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-200/90 w-[95vw] max-w-7xl h-[90vh] max-h-[920px] flex flex-col overflow-hidden z-10 transition-[transform,opacity] duration-200 ease-in-out motion-reduce:transition-none ${
+          isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+        }`}
+      >
         {/* Top Header Bar */}
         <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -301,7 +345,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleDismiss}
               className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
               title="Close (Esc)"
               aria-label="Close modal"

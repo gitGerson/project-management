@@ -426,6 +426,7 @@ export function BoardKanbanView({
 
   // Sync initialLists when changed from parent without losing local updates
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLists((prev) => {
       const map = new Map<number, ListDTO>();
       for (const l of initialLists) map.set(l.id, l);
@@ -1092,9 +1093,7 @@ export function BoardKanbanView({
           onClose={() => setSelectedCardId(null)}
           onUpdateCard={handleUpdateCardDetails}
           onDeleteCard={async (cId) => {
-            const success = await handleDeleteCard(cId);
-            if (success) setSelectedCardId(null);
-            return success;
+            return await handleDeleteCard(cId);
           }}
           onMoveCardToList={handleMoveCardToListFromModal}
           onCardUpdated={handleCardUpdated}
