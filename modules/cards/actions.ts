@@ -17,6 +17,7 @@ import {
   toggleCardLabelSchema,
 } from './schemas/label.schema';
 import { toggleCardMemberSchema } from './schemas/member.schema';
+import { createCardAttachmentSchema } from './schemas/attachment.schema';
 import type {
   ActionResponse,
   CardDTO,
@@ -29,6 +30,8 @@ import type {
   UpdateLabelInput,
   ToggleCardLabelInput,
   ToggleCardMemberInput,
+  CardAttachmentDTO,
+  CreateCardAttachmentInput,
 } from './types';
 
 export async function getBoardCardsAction(boardId: number): Promise<ActionResponse<CardDTO[]>> {
@@ -312,5 +315,54 @@ export async function getBoardMembersForCardAction(
     return { success: false, message: error.message || 'Failed to fetch board members' };
   }
 }
+
+export async function addCardAttachmentAction(
+  input: CreateCardAttachmentInput
+): Promise<ActionResponse<CardAttachmentDTO>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  const parsed = createCardAttachmentSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: 'Validation failed',
+      errors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  try {
+    const attachment = await cardService.addAttachment(session.userId, parsed.data);
+    return { success: true, data: attachment };
+  } catch (err) {
+    const error = err as Error;
+    return { success: false, message: error.message || 'Failed to add attachment' };
+  }
+}
+
+export async function deleteCardAttachmentAction(
+  cardId: number,
+  attachmentId: number
+): Promise<ActionResponse<{ id: number }>> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, message: 'Unauthorized. Please sign in.' };
+  }
+
+  if (!cardId || !attachmentId) {
+    return { success: false, message: 'Invalid card or attachment ID' };
+  }
+
+  try {
+    await cardService.deleteAttachment(session.userId, cardId, attachmentId);
+    return { success: true, data: { id: attachmentId } };
+  } catch (err) {
+    const error = err as Error;
+    return { success: false, message: error.message || 'Failed to delete attachment' };
+  }
+}
+
 
 

@@ -3,6 +3,8 @@ import { hasPermission } from '@/lib/access';
 import { PERMISSIONS } from '@/modules/rbac/constants';
 import { boardMemberService } from '@/modules/board-members/services/board-member.service';
 import { publishCommentEvent } from './realtime-publisher';
+import { cardService } from '@/modules/cards/services/card.service';
+import { publishCardEvent } from '@/modules/cards/services/card-publisher';
 import { parseCommentContent, serializeCommentContent, stripHtml } from '../utils/comment-parser';
 import type {
   ChatGroupDTO,
@@ -360,6 +362,45 @@ export class CommentService {
 
     // Broadcast in background via Redis to WebSocket subscribers
     await publishCommentEvent(canonicalScope, input.commentableId, dto);
+
+    // If comment was posted on a card and contains attachments, register in card_attachments and broadcast card.updated
+    if (canonicalScope === 'card' && parsed.attachments && parsed.attachments.length > 0) {
+      for (const att of parsed.attachments) {
+        if (att.url) {
+          const existingAtt = await prisma.cardAttachment.findFirst({
+            where: {
+              cardId: input.commentableId,
+              fileUrl: att.url,
+            },
+          });
+          if (!existingAtt) {
+            await prisma.cardAttachment.create({
+              data: {
+                cardId: input.commentableId,
+                userId,
+                fileName: att.fileName || 'attachment',
+                fileUrl: att.url,
+                fileSize: att.fileSize || 0,
+                fileType:
+                  att.mimeType || (att.isImage ? 'image/png' : 'application/octet-stream'),
+              },
+            });
+          }
+        }
+      }
+
+      const fullCard = await cardService.getCardById(input.commentableId);
+      if (fullCard) {
+        await publishCardEvent({
+          type: 'card.updated',
+          op: 'card.updated',
+          boardId: fullCard.boardId,
+          listId: fullCard.listId,
+          actorId: userId,
+          card: fullCard,
+        });
+      }
+    }
 
     return dto;
   }

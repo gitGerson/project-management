@@ -10,6 +10,8 @@ import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import ImageExtension from '@tiptap/extension-image';
 import { uploadFileDirectly } from '@/lib/upload-client';
+import { addCardAttachmentAction } from '../actions';
+import type { CardAttachmentDTO } from '../types';
 import {
   Bold,
   Italic,
@@ -49,6 +51,7 @@ interface CardDescriptionEditorProps {
   onSave: (newDesc: string | null) => Promise<boolean>;
   isEditing: boolean;
   onEditingChange: (isEditing: boolean) => void;
+  onAttachmentAdded?: (attachment: CardAttachmentDTO) => void;
 }
 
 const BUBBLE_MENU_OPTIONS = {
@@ -72,6 +75,7 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
   onSave,
   isEditing,
   onEditingChange,
+  onAttachmentAdded,
 }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -168,6 +172,23 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
               })
               .run();
           }
+
+          // Register in card_attachments and notify parent ATTACHMENTS section
+          try {
+            const attRes = await addCardAttachmentAction({
+              cardId,
+              fileName: res.fileName,
+              fileUrl: res.publicUrl,
+              fileSize: res.fileSize,
+              fileType:
+                res.contentType || file.type || (isImg ? 'image/png' : 'application/octet-stream'),
+            });
+            if (attRes.success && attRes.data) {
+              onAttachmentAdded?.(attRes.data);
+            }
+          } catch (attErr) {
+            console.error('Failed to register card attachment:', attErr);
+          }
         }
       } catch (err) {
         const error = err as Error;
@@ -176,7 +197,7 @@ export const CardDescriptionEditor: React.FC<CardDescriptionEditorProps> = ({
         setIsUploading(false);
       }
     },
-    []
+    [cardId, onAttachmentAdded]
   );
 
   const editor = useEditor({

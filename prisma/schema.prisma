@@ -27,6 +27,7 @@ model User {
   commentReads CommentRead[]
   cards       Card[]
   cardMembers CardMember[]
+  cardAttachments CardAttachment[]
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -89,6 +90,7 @@ model Card {
   owner       User      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   cardLabels  CardLabel[]
   members     CardMember[]
+  attachments CardAttachment[]
 
   @@index([listId, rank], name: "cards_list_id_rank_idx")
   @@index([listId, sortOrder], name: "cards_list_id_sort_order_idx")
@@ -248,5 +250,25 @@ model CardMember {
   @@index([userId], name: "card_members_user_id_idx")
   @@map("card_members")
 }
+
+model CardAttachment {
+  id         Int      @id @default(autoincrement())
+  cardId     Int      @map("card_id")
+  userId     Int      @map("user_id")
+  fileName   String   @map("file_name") @db.VarChar(255)
+  fileUrl    String   @map("file_url") @db.VarChar(1024)
+  fileSize   Int      @map("file_size")
+  fileType   String   @map("file_type") @db.VarChar(100)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  card       Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([cardId], name: "card_attachments_card_id_idx")
+  @@index([userId], name: "card_attachments_user_id_idx")
+  @@map("card_attachments")
+}
+
 
 

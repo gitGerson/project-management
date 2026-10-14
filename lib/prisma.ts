@@ -19,7 +19,8 @@ const isValidClient =
   existingClient.userPinnedBoard &&
   existingClient.comment &&
   existingClient.commentRead &&
-  existingClient.list;
+  existingClient.list &&
+  existingClient.cardAttachment;
 
 export const prisma: PrismaClient =
   (isValidClient ? existingClient : undefined) ||

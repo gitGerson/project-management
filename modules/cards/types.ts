@@ -28,6 +28,26 @@ export interface CardMemberDTO {
   user: CardMemberUserDTO;
 }
 
+export interface CardAttachmentUserDTO {
+  id: number;
+  name: string;
+  username: string;
+  profilePicture: string | null;
+}
+
+export interface CardAttachmentDTO {
+  id: number;
+  cardId: number;
+  userId: number;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  fileType: string;
+  createdAt: string;
+  updatedAt: string;
+  user?: CardAttachmentUserDTO;
+}
+
 export interface CardDTO {
   id: number;
   boardId: number;
@@ -46,6 +66,7 @@ export interface CardDTO {
   owner?: CardOwnerDTO;
   labels?: LabelDTO[];
   members?: CardMemberDTO[];
+  attachments?: CardAttachmentDTO[];
 }
 
 export interface CreateLabelInput {
@@ -99,6 +120,14 @@ export interface CardPermissionsDTO {
   canCreate: boolean;
   canUpdate: boolean;
   canDelete: boolean;
+}
+
+export interface CreateCardAttachmentInput {
+  cardId: number;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  fileType: string;
 }
 
 export interface ActionResponse<T = unknown> {

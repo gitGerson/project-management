@@ -4,9 +4,9 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import type { CommentDTO } from '../types';
 import { formatFileSize, formatCommentHtml } from '../utils/comment-parser';
+import { getFileTypeStyle } from '@/lib/file-type';
 import {
   CornerDownRight,
-  FileText,
   Download,
   Clock,
   X,
@@ -160,31 +160,39 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         {/* Document / File Attachments */}
         {fileAttachments.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2.5">
-            {fileAttachments.map((file, i) => (
-              <a
-                key={i}
-                href={file.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                download={file.fileName}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs transition-all max-w-full border bg-gray-50 hover:bg-emerald-50/50 border-gray-200 text-gray-800"
-              >
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-emerald-100/60 text-[#15803d]">
-                  <FileText className="w-3.5 h-3.5" />
-                </div>
-                <div className="min-w-0 pr-1">
-                  <p className="font-medium text-xs truncate max-w-[180px]">
-                    {file.fileName}
-                  </p>
-                  {file.fileSize ? (
-                    <p className="text-[9.5px] text-gray-400">
-                      {formatFileSize(file.fileSize)}
+            {fileAttachments.map((file, i) => {
+              const style = getFileTypeStyle(file.fileName);
+              return (
+                <a
+                  key={i}
+                  href={file.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download={file.fileName}
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs transition-all max-w-full border ${style.bgClass} ${style.borderClass} text-gray-800 shadow-2xs hover:shadow-xs`}
+                >
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border ${style.badgeClass}`}>
+                    {style.renderIcon('w-3.5 h-3.5 stroke-[1.8]')}
+                  </div>
+                  <div className="min-w-0 pr-1">
+                    <p className="font-medium text-xs truncate max-w-[180px]">
+                      {file.fileName}
                     </p>
-                  ) : null}
-                </div>
-                <Download className="w-3.5 h-3.5 shrink-0 text-gray-400" />
-              </a>
-            ))}
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className={`text-[7.5px] font-bold uppercase px-1 py-0.2 rounded border leading-none ${style.badgeClass}`}>
+                        {style.label}
+                      </span>
+                      {file.fileSize ? (
+                        <span className="text-[9.5px] text-gray-400">
+                          {formatFileSize(file.fileSize)}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <Download className="w-3.5 h-3.5 shrink-0 text-gray-400 hover:text-gray-600 transition-colors" />
+                </a>
+              );
+            })}
           </div>
         )}
 

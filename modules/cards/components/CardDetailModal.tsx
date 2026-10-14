@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import type { CardDTO, UpdateCardInput } from '../types';
+import type { CardDTO, CardAttachmentDTO, UpdateCardInput } from '../types';
 import type { ListDTO } from '@/modules/lists/types';
 import { CardCommentsSection } from './CardCommentsSection';
 import { CardLabelPicker } from './CardLabelPicker';
@@ -10,6 +10,7 @@ import { CardMemberPicker } from './CardMemberPicker';
 import { CardDateRangePicker } from './CardDateRangePicker';
 import { CardOwnerPicker } from './CardOwnerPicker';
 import { CardDescriptionEditor } from './CardDescriptionEditor';
+import { CardAttachmentsSection } from './CardAttachmentsSection';
 import {
   X,
   AlignLeft,
@@ -82,7 +83,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
   const [isListMenuOpen, setIsListMenuOpen] = useState(false);
   const listMenuRef = useRef<HTMLDivElement>(null);
 
-  // Synchronize state during render when propCard changes
+  // Synchronize state during render when switching to a different card
   const [prevCardId, setPrevCardId] = useState(propCard?.id);
   if (propCard && propCard.id !== prevCardId) {
     setPrevCardId(propCard.id);
@@ -529,8 +530,44 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                 canUpdate={canUpdate}
                 isEditing={isEditingDesc}
                 onEditingChange={setIsEditingDesc}
+                onAttachmentAdded={(newAttachment) => {
+                  if (!card) return;
+                  const existingIds = new Set((card.attachments || []).map((a) => a.id));
+                  if (existingIds.has(newAttachment.id)) return;
+                  const updatedCard: CardDTO = {
+                    ...card,
+                    attachments: [...(card.attachments || []), newAttachment],
+                  };
+                  setCachedCard(updatedCard);
+                  onCardUpdated?.(updatedCard);
+                }}
                 onSave={async (newDesc) => {
                   return await onUpdateCard(card.id, { description: newDesc });
+                }}
+              />
+
+              {/* Attachments Section */}
+              <CardAttachmentsSection
+                cardId={card.id}
+                attachments={card.attachments}
+                canUpdate={canUpdate}
+                onAttachmentAdded={(newAttachment) => {
+                  if (!card) return;
+                  const updatedCard: CardDTO = {
+                    ...card,
+                    attachments: [...(card.attachments || []), newAttachment],
+                  };
+                  setCachedCard(updatedCard);
+                  onCardUpdated?.(updatedCard);
+                }}
+                onAttachmentDeleted={(deletedId) => {
+                  if (!card) return;
+                  const updatedCard: CardDTO = {
+                    ...card,
+                    attachments: (card.attachments || []).filter((a) => a.id !== deletedId),
+                  };
+                  setCachedCard(updatedCard);
+                  onCardUpdated?.(updatedCard);
                 }}
               />
             </div>
@@ -547,6 +584,32 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
               currentUserId={currentUserId}
               currentUserName={currentUserName}
               onCommentsCountChange={setCommentsCount}
+              onCommentAttachmentsAdded={(commentAtts) => {
+                if (!card) return;
+                const existingUrls = new Set((card.attachments || []).map((a) => a.fileUrl));
+                const toAdd = commentAtts.filter((ca) => !existingUrls.has(ca.url));
+                if (toAdd.length === 0) return;
+
+                const newAttachments: CardAttachmentDTO[] = toAdd.map((ca, idx) => ({
+                  id: -1 * (Date.now() + idx),
+                  cardId: card.id,
+                  userId: currentUserId,
+                  fileName: ca.fileName || 'attachment',
+                  fileUrl: ca.url,
+                  fileSize: ca.fileSize || 0,
+                  fileType:
+                    ca.mimeType || (ca.isImage ? 'image/png' : 'application/octet-stream'),
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                }));
+
+                const updatedCard: CardDTO = {
+                  ...card,
+                  attachments: [...(card.attachments || []), ...newAttachments],
+                };
+                setCachedCard(updatedCard);
+                onCardUpdated?.(updatedCard);
+              }}
             />
           </div>
         </div>

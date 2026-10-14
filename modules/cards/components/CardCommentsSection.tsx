@@ -24,6 +24,7 @@ interface CardCommentsSectionProps {
   currentUserId: number;
   currentUserName?: string;
   onCommentsCountChange?: (count: number) => void;
+  onCommentAttachmentsAdded?: (attachments: CommentAttachmentDTO[]) => void;
 }
 
 export const CardCommentsSection: React.FC<CardCommentsSectionProps> = ({
@@ -31,6 +32,7 @@ export const CardCommentsSection: React.FC<CardCommentsSectionProps> = ({
   currentUserId,
   currentUserName = 'Me',
   onCommentsCountChange,
+  onCommentAttachmentsAdded,
 }) => {
   const [comments, setComments] = useState<CommentDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,11 +76,15 @@ export const CardCommentsSection: React.FC<CardCommentsSectionProps> = ({
         return [...prev, newComment];
       });
 
+      if (newComment.attachments && newComment.attachments.length > 0) {
+        onCommentAttachmentsAdded?.(newComment.attachments);
+      }
+
       // Mark as read immediately since user is actively viewing this card
       markChatAsReadAction('card', cardId).catch(() => {});
       setTimeout(() => scrollToBottom(true), 50);
     },
-    [cardId, scrollToBottom]
+    [cardId, onCommentAttachmentsAdded, scrollToBottom]
   );
 
   // Hook into WebSocket
@@ -87,11 +93,17 @@ export const CardCommentsSection: React.FC<CardCommentsSectionProps> = ({
     onCommentReceived: handleCommentReceived,
   });
 
+  // Reset loading and error state during render if cardId changes
+  const [prevCardId, setPrevCardId] = useState(cardId);
+  if (cardId !== prevCardId) {
+    setPrevCardId(cardId);
+    setLoading(true);
+    setError(null);
+  }
+
   // Fetch initial comments and mention candidates
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
-    setError(null);
 
     Promise.all([
       listCommentsAction('card', cardId),
@@ -171,6 +183,9 @@ export const CardCommentsSection: React.FC<CardCommentsSectionProps> = ({
 
     setComments((prev) => [...prev, optimisticComment]);
     setReplyingTo(null);
+    if (payload.attachments && payload.attachments.length > 0) {
+      onCommentAttachmentsAdded?.(payload.attachments);
+    }
     setTimeout(() => scrollToBottom(true), 50);
 
     const res = await sendCommentAction({
