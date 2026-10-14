@@ -82,7 +82,11 @@ const releaseNotes = [
   },
 ];
 
-export default function LoginForm() {
+interface LoginFormProps {
+  callbackUrl?: string;
+}
+
+export default function LoginForm({ callbackUrl }: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(loginAction, initialState);
   const [showPassword, setShowPassword] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
@@ -192,6 +196,9 @@ export default function LoginForm() {
 
             {/* Form */}
             <form action={formAction} className="space-y-4">
+              {callbackUrl && (
+                <input type="hidden" name="callbackUrl" value={callbackUrl} />
+              )}
               <div>
                 <Label htmlFor="username" className="mb-1 block">
                   Username

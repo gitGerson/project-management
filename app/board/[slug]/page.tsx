@@ -19,15 +19,24 @@ interface BoardPageProps {
   params: Promise<{
     slug: string;
   }>;
+  searchParams?: Promise<{
+    cardId?: string;
+  }>;
 }
 
-export default async function BoardDetailPage({ params }: BoardPageProps) {
+export default async function BoardDetailPage({ params, searchParams }: BoardPageProps) {
+  const { slug } = await params;
+  const searchParamsObj = (await searchParams) || {};
+  const cardIdParam = searchParamsObj.cardId;
+  const requestedCardId = cardIdParam ? parseInt(cardIdParam, 10) : undefined;
+
   const session = await getSession();
   if (!session) {
-    redirect('/login');
+    const returnUrl = cardIdParam
+      ? `/board/${slug}?cardId=${cardIdParam}`
+      : `/board/${slug}`;
+    redirect(`/login?callbackUrl=${encodeURIComponent(returnUrl)}`);
   }
-
-  const { slug } = await params;
 
   const [user, permissions, roles, board] = await Promise.all([
     authService.getUserById(session.userId),
@@ -78,6 +87,23 @@ export default async function BoardDetailPage({ params }: BoardPageProps) {
     cardService.getBoardCardPermissions(session.userId, board.id),
   ]);
 
+  let allCards = cards;
+  let targetCardId = requestedCardId && !isNaN(requestedCardId) ? requestedCardId : undefined;
+
+  // If requested card is not in current active board cards, attempt to fetch it and verify it belongs to this board
+  if (targetCardId && !cards.some((c) => c.id === targetCardId)) {
+    try {
+      const extraCard = await cardService.getCardById(targetCardId);
+      if (extraCard && extraCard.boardId === board.id) {
+        allCards = [...cards, extraCard];
+      } else {
+        targetCardId = undefined;
+      }
+    } catch {
+      targetCardId = undefined;
+    }
+  }
+
   const canEdit =
     permissions.includes(PERMISSIONS.BOARDS_UPDATE) ||
     board.currentUserRole === 'owner';
@@ -105,8 +131,9 @@ export default async function BoardDetailPage({ params }: BoardPageProps) {
             boardId={board.id}
             initialLists={lists}
             permissions={listPermissions}
-            initialCards={cards}
+            initialCards={allCards}
             cardPermissions={cardPermissions}
+            initialSelectedCardId={targetCardId}
             currentUser={
               user ? { id: user.id, name: user.name, username: user.username } : undefined
             }

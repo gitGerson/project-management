@@ -61,6 +61,7 @@ interface BoardKanbanViewProps {
     name?: string;
     username: string;
   };
+  initialSelectedCardId?: number;
 }
 
 /**
@@ -98,6 +99,7 @@ export function BoardKanbanView({
   initialCards = [],
   cardPermissions = { canCreate: true, canUpdate: true, canDelete: true },
   currentUser,
+  initialSelectedCardId,
 }: BoardKanbanViewProps) {
   const [lists, setLists] = useState<ListDTO[]>(initialLists);
   const [items, setItems] = useState<Record<number, CardDTO[]>>(() =>
@@ -105,7 +107,60 @@ export function BoardKanbanView({
   );
 
   // Selected Card for Detail Modal (65% content / 35% comments)
-  const [selectedCardId, setSelectedCardId] = useState<number | null>(null);
+  const [selectedCardId, setSelectedCardId] = useState<number | null>(
+    initialSelectedCardId || null
+  );
+
+  useEffect(() => {
+    if (initialSelectedCardId) {
+      setSelectedCardId(initialSelectedCardId);
+    }
+  }, [initialSelectedCardId]);
+
+  // Sync URL when card modal opens or closes
+  const handleOpenCardModal = useCallback((cardId: number) => {
+    setSelectedCardId(cardId);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('cardId', String(cardId));
+      window.history.pushState({ cardId }, '', url.toString());
+    }
+  }, []);
+
+  const handleCloseCardModal = useCallback(() => {
+    setSelectedCardId(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('cardId')) {
+        url.searchParams.delete('cardId');
+        window.history.pushState({}, '', url.toString());
+      }
+    }
+  }, []);
+
+  // Handle browser back/forward buttons (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        const cardIdParam = url.searchParams.get('cardId');
+        if (cardIdParam) {
+          const parsed = parseInt(cardIdParam, 10);
+          if (!isNaN(parsed)) {
+            setSelectedCardId(parsed);
+            return;
+          }
+        }
+        setSelectedCardId(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
   const [currentChatUser, setCurrentChatUser] = useState<{
     id: number;
     name?: string;
@@ -1028,7 +1083,7 @@ export function BoardKanbanView({
               onDeleteCard={handleDeleteCard}
               onMoveCardUp={(cardId) => handleMoveCardStep(cardId, 'up')}
               onMoveCardDown={(cardId) => handleMoveCardStep(cardId, 'down')}
-              onCardClick={(card) => setSelectedCardId(card.id)}
+              onCardClick={(card) => handleOpenCardModal(card.id)}
             />
           ))}
 
@@ -1090,7 +1145,7 @@ export function BoardKanbanView({
           canDelete={cardPermissions.canDelete}
           currentUserId={currentChatUser?.id || 0}
           currentUserName={currentChatUser?.name || currentChatUser?.username || 'Me'}
-          onClose={() => setSelectedCardId(null)}
+          onClose={handleCloseCardModal}
           onUpdateCard={handleUpdateCardDetails}
           onDeleteCard={async (cId) => {
             return await handleDeleteCard(cId);

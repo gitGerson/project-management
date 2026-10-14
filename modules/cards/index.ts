@@ -7,3 +7,4 @@ export { CardCommentsSection } from './components/CardCommentsSection';
 export { CardLabelPicker } from './components/CardLabelPicker';
 export { CardDescriptionEditor } from './components/CardDescriptionEditor';
 export { useRealtimeCards } from './hooks/useRealtimeCards';
+export { encodeCardHash, decodeCardHash } from './utils/card-hash';

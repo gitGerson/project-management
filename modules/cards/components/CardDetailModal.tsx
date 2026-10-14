@@ -14,6 +14,7 @@ import { CardAttachmentsSection } from './CardAttachmentsSection';
 import { getCardCoverImage } from '@/lib/file-type';
 import { uploadFileDirectly } from '@/lib/upload-client';
 import { updateCardAction } from '../actions';
+import { encodeCardHash } from '../utils/card-hash';
 import {
   X,
   AlignLeft,
@@ -130,8 +131,10 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
   };
 
   const handleShareCard = () => {
-    if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(window.location.href);
+    if (typeof window !== 'undefined' && card) {
+      const hash = encodeCardHash(card.id);
+      const shareUrl = `${window.location.origin}/c/${hash}`;
+      navigator.clipboard.writeText(shareUrl);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     }

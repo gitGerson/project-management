@@ -46,7 +46,10 @@ export async function loginAction(
     };
   }
 
-  redirect('/');
+  const callbackUrl = (formData.get('callbackUrl') as string) || '';
+  const targetUrl =
+    callbackUrl.startsWith('/') && !callbackUrl.startsWith('//') ? callbackUrl : '/';
+  redirect(targetUrl);
 }
 
 export async function registerAction(
