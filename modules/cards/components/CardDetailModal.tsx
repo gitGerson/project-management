@@ -91,6 +91,8 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
 
   // Cover management states
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isCoverMenuOpen, setIsCoverMenuOpen] = useState(false);
+  const coverMenuRef = useRef<HTMLDivElement>(null);
   const [isCopied, setIsCopied] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
@@ -208,18 +210,22 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isEditingTitle, isEditingDesc, card, handleDismiss]);
 
-  // Close list dropdown on click outside
+  // Close list and cover dropdowns on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (listMenuRef.current && !listMenuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (listMenuRef.current && !listMenuRef.current.contains(target)) {
         setIsListMenuOpen(false);
       }
+      if (coverMenuRef.current && !coverMenuRef.current.contains(target)) {
+        setIsCoverMenuOpen(false);
+      }
     };
-    if (isListMenuOpen) {
+    if (isListMenuOpen || isCoverMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isListMenuOpen]);
+  }, [isListMenuOpen, isCoverMenuOpen]);
 
   // Focus title input on edit
   useEffect(() => {
@@ -376,15 +382,15 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                       <span>{isCopied ? 'Copied!' : 'Share'}</span>
                     </button>
 
-                    {/* Cover Actions */}
+                    {/* Cover Actions Dropdown */}
                     {canUpdate && (
-                      <div className="flex items-center gap-1">
+                      <div className="relative" ref={coverMenuRef}>
                         <button
                           type="button"
-                          onClick={() => coverInputRef.current?.click()}
+                          onClick={() => setIsCoverMenuOpen((prev) => !prev)}
                           disabled={isUploadingCover}
                           className="px-2.5 py-1.5 bg-white/90 hover:bg-white text-gray-700 rounded-xl text-xs font-semibold shadow-md backdrop-blur-xs border border-white/40 flex items-center gap-1.5 transition-colors cursor-pointer"
-                          title="Change cover photo"
+                          title="Cover options"
                         >
                           {isUploadingCover ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -392,16 +398,35 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                             <ImageIcon className="w-3.5 h-3.5 text-gray-500" />
                           )}
                           <span className="hidden sm:inline">Cover</span>
+                          <ChevronDown className="w-3 h-3 text-gray-400" />
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleSetCover(null)}
-                          className="p-1.5 bg-white/90 hover:bg-red-50 hover:text-red-600 text-gray-700 rounded-xl shadow-md backdrop-blur-xs border border-white/40 transition-colors cursor-pointer"
-                          title="Remove cover"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {isCoverMenuOpen && (
+                          <div className="absolute right-0 top-full mt-1.5 w-40 bg-white border border-gray-200/90 rounded-xl shadow-xl p-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCoverMenuOpen(false);
+                                coverInputRef.current?.click();
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700 font-medium"
+                            >
+                              <ImageIcon className="w-3.5 h-3.5 text-gray-500" />
+                              <span>Ganti Sampul</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCoverMenuOpen(false);
+                                handleSetCover(null);
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-red-50 flex items-center gap-2 cursor-pointer text-red-600 font-medium"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              <span>Hapus Sampul</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -641,7 +666,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
             }`}
           >
             {/* Card Title & Labels */}
-            <div className="mb-4">
+            <div className="mb-2">
               {isEditingTitle && canUpdate ? (
                 <div className="space-y-3">
                   <div className="flex items-start gap-2">
@@ -733,7 +758,7 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
             </div>
 
             {/* Divider under Card Title */}
-            <div className="h-px bg-gray-100 mb-5" />
+            <div className="h-px bg-gray-100 mb-4" />
 
             {/* Properties Information (Card Owner, Members & Dates) */}
             <div className="flex flex-wrap items-start gap-x-6 sm:gap-x-7 gap-y-4 mb-6">

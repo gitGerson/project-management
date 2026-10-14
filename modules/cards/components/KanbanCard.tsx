@@ -1,22 +1,17 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import {
   useSortable,
   defaultAnimateLayoutChanges,
   AnimateLayoutChanges,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 import {
-  MoreHorizontal,
-  Trash2,
-  Pencil,
   Check,
   AlignLeft,
-  ArrowUp,
-  ArrowDown,
-  Eye,
   Clock,
 } from 'lucide-react';
 import type { CardDTO } from '../types';
@@ -57,24 +52,128 @@ export function KanbanCard({
 }: KanbanCardProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(card.title);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isConfirmDelete, setIsConfirmDelete] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const [menuCoords, setMenuCoords] = useState<{
-    top: number;
-    left: number;
-    placeAbove?: boolean;
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const [isLabelsExpanded, setIsLabelsExpanded] = useState(false);
+  const labelsContainerRef = useRef<HTMLDivElement>(null);
+  const labelItemsRef = useRef<Map<number, HTMLElement>>(new Map());
+  const pendingLabelFlip = useRef<{
+    rects: Map<number, DOMRect>;
+    containerH: number | null;
   } | null>(null);
 
-  const inputRef = useRef<HTMLInputElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const captureLabelRects = () => {
+    const rects = new Map<number, DOMRect>();
+    labelItemsRef.current.forEach((el, id) => {
+      if (el) {
+        rects.set(id, el.getBoundingClientRect());
+      }
+    });
+    const containerH = labelsContainerRef.current?.getBoundingClientRect().height || null;
+    pendingLabelFlip.current = { rects, containerH };
+  };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsMounted(true);
+    const saved = localStorage.getItem('kanban:labels-expanded');
+    if (saved !== null) {
+      setIsLabelsExpanded(saved === 'true');
+    }
+
+    const handleSync = (e: Event) => {
+      const customEvent = e as CustomEvent<{ expanded: boolean }>;
+      const next =
+        customEvent.detail && typeof customEvent.detail.expanded === 'boolean'
+          ? customEvent.detail.expanded
+          : localStorage.getItem('kanban:labels-expanded') === 'true';
+
+      captureLabelRects();
+      setIsLabelsExpanded(next);
+    };
+
+    window.addEventListener('kanban:toggle-labels', handleSync);
+    return () => window.removeEventListener('kanban:toggle-labels', handleSync);
   }, []);
+
+  const handleToggleLabels = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    captureLabelRects();
+    const next = !isLabelsExpanded;
+    setIsLabelsExpanded(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('kanban:labels-expanded', String(next));
+      window.dispatchEvent(
+        new CustomEvent('kanban:toggle-labels', { detail: { expanded: next } })
+      );
+    }
+  };
+
+  useIsomorphicLayoutEffect(() => {
+    if (!pendingLabelFlip.current) return;
+    const { rects: oldRects, containerH: oldH } = pendingLabelFlip.current;
+    pendingLabelFlip.current = null;
+
+    // 1. Container height smooth interpolation
+    if (labelsContainerRef.current && oldH !== null) {
+      const container = labelsContainerRef.current;
+      const newH = container.getBoundingClientRect().height;
+
+      if (Math.abs(oldH - newH) > 1) {
+        container.style.height = `${oldH}px`;
+        container.style.overflow = 'hidden';
+        container.style.transition = 'none';
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            container.style.transition = 'height 320ms cubic-bezier(0.25, 1, 0.5, 1)';
+            container.style.height = `${newH}px`;
+
+            const onEnd = (e: TransitionEvent) => {
+              if (e.target === container && e.propertyName === 'height') {
+                container.style.height = '';
+                container.style.transition = '';
+                container.style.overflow = '';
+                container.removeEventListener('transitionend', onEnd);
+              }
+            };
+            container.addEventListener('transitionend', onEnd);
+          });
+        });
+      }
+    }
+
+    // 2. Child element FLIP across rows (both X and Y!)
+    labelItemsRef.current.forEach((el, id) => {
+      if (!el) return;
+      const oldRect = oldRects.get(id);
+      if (!oldRect) return;
+
+      const newRect = el.getBoundingClientRect();
+      const dx = oldRect.left - newRect.left;
+      const dy = oldRect.top - newRect.top;
+
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+        el.style.transform = `translate(${dx}px, ${dy}px)`;
+        el.style.transition = 'none';
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            el.style.transition =
+              'transform 320ms cubic-bezier(0.25, 1, 0.5, 1)';
+            el.style.transform = '';
+
+            const onEnd = (e: TransitionEvent) => {
+              if (e.target === el && e.propertyName === 'transform') {
+                el.style.transition = '';
+                el.removeEventListener('transitionend', onEnd);
+              }
+            };
+            el.addEventListener('transitionend', onEnd);
+          });
+        });
+      }
+    });
+  }, [isLabelsExpanded]);
 
   useEffect(() => {
     if (isEditingTitle && inputRef.current) {
@@ -82,61 +181,6 @@ export function KanbanCard({
       inputRef.current.select();
     }
   }, [isEditingTitle]);
-
-  const updateCoords = useCallback(() => {
-    if (!buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    const menuWidth = 144; // w-36 = 144px
-    const estimatedHeight = 150;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const placeAbove = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
-
-    setMenuCoords({
-      top: placeAbove ? rect.top - 4 : rect.bottom + 4,
-      left: Math.max(8, rect.right - menuWidth),
-      placeAbove,
-    });
-  }, []);
-
-  // Update coords and attach scroll/resize listeners when menu opens
-  useEffect(() => {
-    if (!isMenuOpen) return;
-    updateCoords();
-
-    const handleScrollOrResize = () => {
-      setIsMenuOpen(false);
-      setIsConfirmDelete(false);
-    };
-
-    window.addEventListener('resize', handleScrollOrResize);
-    window.addEventListener('scroll', handleScrollOrResize, true);
-
-    return () => {
-      window.removeEventListener('resize', handleScrollOrResize);
-      window.removeEventListener('scroll', handleScrollOrResize, true);
-    };
-  }, [isMenuOpen, updateCoords]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(target)
-      ) {
-        setIsMenuOpen(false);
-        setIsConfirmDelete(false);
-      }
-    };
-    if (isMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isMenuOpen]);
 
   const handleSaveTitle = async () => {
     const trimmed = titleInput.trim();
@@ -165,12 +209,6 @@ export function KanbanCard({
       setTitleInput(card.title);
       setIsEditingTitle(false);
     }
-  };
-
-  const handleDelete = async () => {
-    setIsSubmitting(true);
-    await onDeleteCard(card.id);
-    setIsSubmitting(false);
   };
 
   const {
@@ -232,26 +270,42 @@ export function KanbanCard({
         </div>
       )}
 
-      {/* Card Labels (Pills) */}
+      {/* Card Labels (Pills) - Collapsible on click without button */}
       {card.labels && card.labels.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-2">
+        <div
+          ref={labelsContainerRef}
+          className="flex flex-wrap items-center gap-1 mb-2"
+          onClick={handleToggleLabels}
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
           {card.labels.map((lbl) => {
             const textColor = getContrastTextColor(lbl.color);
             return (
               <span
                 key={lbl.id}
+                ref={(node) => {
+                  if (node) labelItemsRef.current.set(lbl.id, node);
+                  else labelItemsRef.current.delete(lbl.id);
+                }}
                 style={{
                   backgroundColor: lbl.color || '#f1f5f9',
                   color: textColor,
                 }}
-                className={`inline-flex items-center rounded-md font-bold shadow-2xs tracking-tight truncate max-w-full ${
+                className={`inline-flex items-center font-bold shadow-2xs tracking-tight select-none cursor-pointer transition-all duration-300 ease-out hover:opacity-85 active:scale-95 ${
                   !lbl.color ? 'border border-gray-300' : ''
                 } ${
-                  lbl.title ? 'h-4.5 px-2 text-[10px]' : 'h-2 w-8 rounded-full'
+                  isLabelsExpanded
+                    ? 'h-4.5 px-2 text-[10px] rounded-md max-w-full truncate'
+                    : 'h-2 w-8 sm:w-10 rounded-full'
                 }`}
-                title={lbl.title || 'Label'}
+                title={
+                  lbl.title
+                    ? `${lbl.title} (Klik untuk ${isLabelsExpanded ? 'shrink' : 'expand'})`
+                    : `Label (Klik untuk ${isLabelsExpanded ? 'shrink' : 'expand'})`
+                }
               >
-                {lbl.title || ''}
+                {isLabelsExpanded ? (lbl.title || '') : null}
               </span>
             );
           })}
@@ -307,148 +361,6 @@ export function KanbanCard({
             </p>
           )}
         </div>
-
-        {/* Card Actions Dropdown (Stop drag propagation) */}
-        {(canUpdate || canDelete) && !isOverlay && (
-          <div
-            className="relative shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-          >
-            <button
-              ref={buttonRef}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsMenuOpen((prev) => !prev);
-                setIsConfirmDelete(false);
-              }}
-              className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
-              aria-label="Card actions"
-              title="Card options"
-            >
-              <MoreHorizontal className="w-3.5 h-3.5" />
-            </button>
-
-            {isMenuOpen &&
-              menuCoords &&
-              isMounted &&
-              typeof document !== 'undefined' &&
-              createPortal(
-                <div
-                  ref={menuRef}
-                  onClick={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  style={{
-                    position: 'fixed',
-                    top: menuCoords.placeAbove ? 'auto' : `${menuCoords.top}px`,
-                    bottom: menuCoords.placeAbove
-                      ? `${window.innerHeight - menuCoords.top}px`
-                      : 'auto',
-                    left: `${menuCoords.left}px`,
-                  }}
-                  className="w-36 bg-white border border-gray-200/90 rounded-xl shadow-xl p-1 z-50 text-xs text-gray-700 animate-in fade-in duration-150 select-none"
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onCardClick?.(card);
-                    }}
-                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-emerald-50 flex items-center gap-2 cursor-pointer text-emerald-800 font-medium"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Open Details</span>
-                  </button>
-
-                  {canUpdate && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        setTitleInput(card.title);
-                        setIsEditingTitle(true);
-                      }}
-                      className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700"
-                    >
-                      <Pencil className="w-3.5 h-3.5 text-gray-400" />
-                      <span>Rename</span>
-                    </button>
-                  )}
-
-                  {canUpdate && onMoveUp && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onMoveUp();
-                      }}
-                      className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700"
-                    >
-                      <ArrowUp className="w-3.5 h-3.5 text-gray-400" />
-                      <span>Move Up</span>
-                    </button>
-                  )}
-
-                  {canUpdate && onMoveDown && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onMoveDown();
-                      }}
-                      className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 flex items-center gap-2 cursor-pointer text-gray-700"
-                    >
-                      <ArrowDown className="w-3.5 h-3.5 text-gray-400" />
-                      <span>Move Down</span>
-                    </button>
-                  )}
-
-                  {canDelete && (
-                    <>
-                      <div className="h-px bg-gray-100 my-1" />
-                      {isConfirmDelete ? (
-                        <div className="p-1 text-center">
-                          <p className="text-[10px] text-red-600 font-semibold mb-1.5">
-                            Delete card?
-                          </p>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={handleDelete}
-                              disabled={isSubmitting}
-                              className="flex-1 py-0.5 px-1.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded text-[10px] transition cursor-pointer"
-                            >
-                              Yes
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setIsConfirmDelete(false)}
-                              className="flex-1 py-0.5 px-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded text-[10px] transition cursor-pointer"
-                            >
-                              No
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setIsConfirmDelete(true)}
-                          className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-red-50 text-red-600 flex items-center gap-2 cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                          <span>Delete</span>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>,
-                document.body
-              )}
-          </div>
-        )}
       </div>
 
       {/* Card Footer: Metadata (Dates, Description indicator & Owner avatar) */}

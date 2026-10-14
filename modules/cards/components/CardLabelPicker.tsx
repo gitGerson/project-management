@@ -70,9 +70,7 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
   const itemRefs = useRef<Map<string | number, HTMLElement>>(new Map());
   const isAnimatingRef = useRef(false);
   const pendingFlip = useRef<{
-    isExpanding: boolean;
-    labelRects: Map<string | number, { width: number; height: number; left: number; top: number }>;
-    tagBtnRect: DOMRect | null;
+    rects: Map<string | number, DOMRect>;
     containerH: number | null;
   } | null>(null);
 
@@ -89,40 +87,26 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
     if (isAnimatingRef.current) return;
 
     const containerH = containerRef.current?.getBoundingClientRect().height || null;
-    const labelRects = new Map<string | number, { width: number; height: number; left: number; top: number }>();
+    const rects = new Map<string | number, DOMRect>();
 
-    (card.labels || []).forEach((lbl) => {
-      const el = itemRefs.current.get(lbl.id);
+    itemRefs.current.forEach((el, key) => {
       if (el) {
-        const r = el.getBoundingClientRect();
-        labelRects.set(lbl.id, {
-          width: r.width,
-          height: r.height,
-          left: r.left,
-          top: r.top,
-        });
+        rects.set(key, el.getBoundingClientRect());
       }
     });
 
-    const tagBtn = itemRefs.current.get('tag-plus-button');
-    const tagBtnRect = tagBtn ? tagBtn.getBoundingClientRect() : null;
-
-    pendingFlip.current = {
-      isExpanding: !isExpanded,
-      labelRects,
-      tagBtnRect,
-      containerH,
-    };
-
+    pendingFlip.current = { rects, containerH };
     setIsExpanded((prev) => !prev);
-  }, [isExpanded, card.labels]);
+  }, []);
 
   useIsomorphicLayoutEffect(() => {
     if (!pendingFlip.current) return;
-    const { isExpanding, labelRects, tagBtnRect, containerH: oldH } = pendingFlip.current;
+    const { rects: oldRects, containerH: oldH } = pendingFlip.current;
     pendingFlip.current = null;
 
-    // 1. Container height smooth interpolation
+    isAnimatingRef.current = true;
+
+    // 1. Smooth container height interpolation
     if (containerRef.current && oldH !== null) {
       const container = containerRef.current;
       const newH = container.getBoundingClientRect().height;
@@ -134,7 +118,7 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
 
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            container.style.transition = 'height 700ms cubic-bezier(0.25, 1, 0.5, 1)';
+            container.style.transition = 'height 320ms cubic-bezier(0.25, 1, 0.5, 1)';
             container.style.height = `${newH}px`;
 
             const onTransitionEnd = (e: TransitionEvent) => {
@@ -151,175 +135,44 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
       }
     }
 
-    const cardLabels = card.labels || [];
-    isAnimatingRef.current = true;
+    // 2. Smooth 2D position interpolation (FLIP) across rows (both dx and dy)
+    itemRefs.current.forEach((el, key) => {
+      if (!el) return;
+      const oldRect = oldRects.get(key);
+      if (!oldRect) return;
 
-    if (!isExpanding) {
-      // ===== SHRINKING: Smoothly contract pills to colored circular dots =====
-      // Before paint: Lock each label to its current expanded width and styles
-      cardLabels.forEach((lbl) => {
-        const el = itemRefs.current.get(lbl.id);
-        const old = labelRects.get(lbl.id);
-        if (el && old) {
-          el.style.transition = 'none';
-          el.style.width = `${old.width}px`;
-          el.style.height = `${old.height}px`;
-          el.style.padding = '0 10px';
-          el.style.borderRadius = '8px';
-        }
-      });
+      const newRect = el.getBoundingClientRect();
+      const dx = oldRect.left - newRect.left;
+      const dy = oldRect.top - newRect.top;
 
-      // Animate smoothly to 20px x 20px circular dot
-      requestAnimationFrame(() => {
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+        // Invert: position element visually at previous screen coordinates
+        el.style.transform = `translate(${dx}px, ${dy}px)`;
+        el.style.transition = 'none';
+
+        // Play: animate smoothly to target position
         requestAnimationFrame(() => {
-          cardLabels.forEach((lbl) => {
-            const el = itemRefs.current.get(lbl.id);
-            if (el) {
-              el.style.transition =
-                'width 700ms cubic-bezier(0.25, 1, 0.5, 1), height 700ms cubic-bezier(0.25, 1, 0.5, 1), padding 700ms cubic-bezier(0.25, 1, 0.5, 1), border-radius 700ms cubic-bezier(0.25, 1, 0.5, 1)';
-              el.style.width = '20px';
-              el.style.height = '20px';
-              el.style.padding = '0';
-              el.style.borderRadius = '9999px';
-            }
-          });
+          requestAnimationFrame(() => {
+            el.style.transition =
+              'transform 320ms cubic-bezier(0.25, 1, 0.5, 1)';
+            el.style.transform = '';
 
-          // Row change adjustment (translateY)
-          cardLabels.forEach((lbl) => {
-            const el = itemRefs.current.get(lbl.id);
-            const old = labelRects.get(lbl.id);
-            if (el && old) {
-              const newRect = el.getBoundingClientRect();
-              const dy = old.top - newRect.top;
-              if (Math.abs(dy) > 4) {
-                el.style.transform = `translateY(${dy}px)`;
-                requestAnimationFrame(() => {
-                  el.style.transition = `${el.style.transition}, transform 700ms cubic-bezier(0.25, 1, 0.5, 1)`;
-                  el.style.transform = '';
-                });
-              }
-            }
-          });
-
-          const tagBtn = itemRefs.current.get('tag-plus-button');
-          if (tagBtn && tagBtnRect) {
-            const newTagRect = tagBtn.getBoundingClientRect();
-            const dy = tagBtnRect.top - newTagRect.top;
-            if (Math.abs(dy) > 4) {
-              tagBtn.style.transform = `translateY(${dy}px)`;
-              tagBtn.style.transition = 'none';
-              requestAnimationFrame(() => {
-                tagBtn.style.transition = 'transform 700ms cubic-bezier(0.25, 1, 0.5, 1)';
-                tagBtn.style.transform = '';
-              });
-            }
-          }
-
-          setTimeout(() => {
-            cardLabels.forEach((lbl) => {
-              const el = itemRefs.current.get(lbl.id);
-              if (el) {
-                el.style.width = '';
-                el.style.height = '';
-                el.style.padding = '';
-                el.style.borderRadius = '';
+            const onTransitionEnd = (e: TransitionEvent) => {
+              if (e.target === el && e.propertyName === 'transform') {
                 el.style.transition = '';
-                el.style.transform = '';
+                el.removeEventListener('transitionend', onTransitionEnd);
               }
-            });
-            if (tagBtn) {
-              tagBtn.style.transform = '';
-              tagBtn.style.transition = '';
-            }
-            isAnimatingRef.current = false;
-          }, 720);
-        });
-      });
-    } else {
-      // ===== EXPANDING: Smoothly expand colored dots into full pills =====
-      const targetWidths = new Map<string | number, number>();
-      cardLabels.forEach((lbl) => {
-        const el = itemRefs.current.get(lbl.id);
-        if (el) {
-          targetWidths.set(lbl.id, el.getBoundingClientRect().width);
-          // Before paint: Lock immediately to 20px circular dot
-          el.style.transition = 'none';
-          el.style.width = '20px';
-          el.style.height = '20px';
-          el.style.padding = '0';
-          el.style.borderRadius = '9999px';
-        }
-      });
-
-      // Animate smoothly to expanded width & height
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          cardLabels.forEach((lbl) => {
-            const el = itemRefs.current.get(lbl.id);
-            const targetW = targetWidths.get(lbl.id);
-            if (el && targetW) {
-              el.style.transition =
-                'width 700ms cubic-bezier(0.25, 1, 0.5, 1), height 700ms cubic-bezier(0.25, 1, 0.5, 1), padding 700ms cubic-bezier(0.25, 1, 0.5, 1), border-radius 700ms cubic-bezier(0.25, 1, 0.5, 1)';
-              el.style.width = `${targetW}px`;
-              el.style.height = '28px';
-              el.style.padding = '0 10px';
-              el.style.borderRadius = '8px';
-            }
+            };
+            el.addEventListener('transitionend', onTransitionEnd);
           });
-
-          // Row change adjustment (translateY)
-          cardLabels.forEach((lbl) => {
-            const el = itemRefs.current.get(lbl.id);
-            const old = labelRects.get(lbl.id);
-            if (el && old) {
-              const newRect = el.getBoundingClientRect();
-              const dy = old.top - newRect.top;
-              if (Math.abs(dy) > 4) {
-                el.style.transform = `translateY(${dy}px)`;
-                requestAnimationFrame(() => {
-                  el.style.transition = `${el.style.transition}, transform 700ms cubic-bezier(0.25, 1, 0.5, 1)`;
-                  el.style.transform = '';
-                });
-              }
-            }
-          });
-
-          const tagBtn = itemRefs.current.get('tag-plus-button');
-          if (tagBtn && tagBtnRect) {
-            const newTagRect = tagBtn.getBoundingClientRect();
-            const dy = tagBtnRect.top - newTagRect.top;
-            if (Math.abs(dy) > 4) {
-              tagBtn.style.transform = `translateY(${dy}px)`;
-              tagBtn.style.transition = 'none';
-              requestAnimationFrame(() => {
-                tagBtn.style.transition = 'transform 700ms cubic-bezier(0.25, 1, 0.5, 1)';
-                tagBtn.style.transform = '';
-              });
-            }
-          }
-
-          setTimeout(() => {
-            cardLabels.forEach((lbl) => {
-              const el = itemRefs.current.get(lbl.id);
-              if (el) {
-                el.style.width = '';
-                el.style.height = '';
-                el.style.padding = '';
-                el.style.borderRadius = '';
-                el.style.transition = '';
-                el.style.transform = '';
-              }
-            });
-            if (tagBtn) {
-              tagBtn.style.transform = '';
-              tagBtn.style.transition = '';
-            }
-            isAnimatingRef.current = false;
-          }, 720);
         });
-      });
-    }
-  }, [isExpanded, card.labels]);
+      }
+    });
+
+    setTimeout(() => {
+      isAnimatingRef.current = false;
+    }, 340);
+  }, [isExpanded]);
 
   const updateCoords = useCallback(() => {
     if (!buttonRef.current) return;
@@ -530,7 +383,7 @@ export const CardLabelPicker: React.FC<CardLabelPickerProps> = ({
                 backgroundColor: lbl.color || '#f1f5f9',
                 color: textColor,
               }}
-              className={`inline-flex items-center font-bold shadow-2xs tracking-tight cursor-pointer hover:opacity-90 active:scale-95 select-none overflow-hidden ${
+              className={`inline-flex items-center font-bold shadow-2xs tracking-tight cursor-pointer hover:opacity-90 active:scale-95 select-none overflow-hidden transition-all duration-300 ease-out ${
                 !lbl.color ? 'border border-gray-300' : ''
               } ${
                 isExpanded
