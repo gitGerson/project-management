@@ -11,6 +11,7 @@ import {
   Loader2,
   Expand,
   Shrink,
+  ImageIcon,
 } from 'lucide-react';
 import { uploadFileDirectly } from '@/lib/upload-client';
 import { getFileTypeStyle, isImageFile } from '@/lib/file-type';
@@ -21,6 +22,8 @@ interface CardAttachmentsSectionProps {
   cardId: number;
   attachments?: CardAttachmentDTO[];
   canUpdate?: boolean;
+  currentCoverUrl?: string | null;
+  onSetCover?: (coverUrl: string | null) => void;
   onAttachmentAdded?: (attachment: CardAttachmentDTO) => void;
   onAttachmentDeleted?: (attachmentId: number) => void;
 }
@@ -36,6 +39,8 @@ export const CardAttachmentsSection: React.FC<CardAttachmentsSectionProps> = ({
   cardId,
   attachments = [],
   canUpdate = true,
+  currentCoverUrl,
+  onSetCover,
   onAttachmentAdded,
   onAttachmentDeleted,
 }) => {
@@ -221,6 +226,23 @@ export const CardAttachmentsSection: React.FC<CardAttachmentsSectionProps> = ({
 
                   {/* Hover actions */}
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/stack:opacity-100 transition-opacity rounded-2xl flex items-start justify-end p-1 gap-1">
+                    {isImg && canUpdate && onSetCover && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSetCover(currentCoverUrl === att.fileUrl ? null : att.fileUrl);
+                        }}
+                        className={`p-1 rounded-md transition-colors shadow-2xs cursor-pointer ${
+                          currentCoverUrl === att.fileUrl
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            : 'bg-white/90 hover:bg-white text-gray-700 hover:text-gray-900'
+                        }`}
+                        title={currentCoverUrl === att.fileUrl ? 'Remove cover' : 'Set as cover'}
+                      >
+                        <ImageIcon className="w-3 h-3" />
+                      </button>
+                    )}
                     <a
                       href={att.fileUrl}
                       download={att.fileName}
@@ -336,6 +358,24 @@ export const CardAttachmentsSection: React.FC<CardAttachmentsSectionProps> = ({
 
                   {/* Hover overlay actions */}
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/card:opacity-100 transition-opacity rounded-2xl flex items-start justify-end p-1.5 gap-1">
+                    {isImg && canUpdate && onSetCover && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSetCover(currentCoverUrl === att.fileUrl ? null : att.fileUrl);
+                        }}
+                        className={`p-1 rounded-lg transition-colors shadow-2xs cursor-pointer ${
+                          currentCoverUrl === att.fileUrl
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            : 'bg-white/90 hover:bg-white text-gray-700 hover:text-gray-900'
+                        }`}
+                        title={currentCoverUrl === att.fileUrl ? 'Remove card cover' : 'Set as card cover'}
+                      >
+                        <ImageIcon className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
                     <a
                       href={att.fileUrl}
                       download={att.fileName}
@@ -376,6 +416,11 @@ export const CardAttachmentsSection: React.FC<CardAttachmentsSectionProps> = ({
                     {att.fileName}
                   </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
+                    {currentCoverUrl === att.fileUrl && (
+                      <span className="text-[8px] font-bold uppercase px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 leading-none shrink-0">
+                        COVER
+                      </span>
+                    )}
                     <span
                       className={`text-[8.5px] font-bold uppercase px-1 py-0.2 rounded border leading-none shrink-0 ${style.badgeClass}`}
                     >

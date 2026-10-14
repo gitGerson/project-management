@@ -28,6 +28,17 @@ export function isImageFile(fileName: string, fileType?: string): boolean {
   return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext);
 }
 
+export function getCardCoverImage(card?: {
+  coverUrl?: string | null;
+  attachments?: Array<{ fileName: string; fileType?: string; fileUrl: string }>;
+} | null): string | null {
+  if (!card) return null;
+  if (card.coverUrl === 'none') return null;
+  if (card.coverUrl) return card.coverUrl;
+  const firstImg = card.attachments?.find((a) => isImageFile(a.fileName, a.fileType));
+  return firstImg ? firstImg.fileUrl : null;
+}
+
 export function getFileTypeStyle(fileName: string, fileType?: string): FileTypeStyle {
   const ext = fileName.toLowerCase().split('.').pop() || '';
   const label = (ext ? ext.toUpperCase().slice(0, 5) : 'FILE');

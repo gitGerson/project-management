@@ -22,6 +22,7 @@ import {
 import type { CardDTO } from '../types';
 import { getContrastTextColor } from '../utils/color-contrast';
 import { getMemberColor } from './CardMemberPicker';
+import { getCardCoverImage } from '@/lib/file-type';
 import {
   formatCompactDate,
   formatDateRange,
@@ -199,6 +200,8 @@ export function KanbanCard({
     ? card.owner.name.trim()[0].toUpperCase()
     : 'U';
 
+  const coverImage = getCardCoverImage(card);
+
   return (
     <div
       ref={setNodeRef}
@@ -213,10 +216,22 @@ export function KanbanCard({
         }
         onCardClick?.(card);
       }}
-      className={`group relative bg-white border border-gray-200/90 rounded-xl p-3 shadow-xs hover:border-gray-300 hover:shadow-xs transition-shadow cursor-grab active:cursor-grabbing select-none touch-manipulation ${
+      className={`group relative bg-white border border-gray-200/90 rounded-xl p-3 shadow-xs hover:border-gray-300 hover:shadow-xs transition-shadow cursor-grab active:cursor-grabbing select-none touch-manipulation overflow-hidden ${
         isOverlay ? 'shadow-xl ring-2 ring-emerald-500/20 rotate-1 cursor-grabbing' : ''
       }`}
     >
+      {/* Card Cover Image */}
+      {coverImage && (
+        <div className="-mx-3 -mt-3 mb-2.5 h-32 sm:h-36 overflow-hidden rounded-t-xl bg-slate-100 relative group/cover select-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={coverImage}
+            alt={card.title}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+          />
+        </div>
+      )}
+
       {/* Card Labels (Pills) */}
       {card.labels && card.labels.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">

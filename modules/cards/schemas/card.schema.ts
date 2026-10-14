@@ -9,6 +9,7 @@ export const createCardSchema = z.object({
     .min(1, 'Card title is required')
     .max(255, 'Card title cannot exceed 255 characters'),
   description: z.string().trim().nullable().optional(),
+  coverUrl: z.string().trim().nullable().optional(),
   startDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
   position: z.enum(['top', 'bottom']).optional().default('top'),
@@ -22,6 +23,7 @@ export const updateCardSchema = z.object({
     .max(255, 'Card title cannot exceed 255 characters')
     .optional(),
   description: z.string().trim().nullable().optional(),
+  coverUrl: z.string().trim().nullable().optional(),
   status: z.string().trim().max(20).optional(),
   startDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),

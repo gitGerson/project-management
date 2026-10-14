@@ -137,18 +137,18 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
               <div
                 key={i}
                 onClick={() => setPreviewImage(img.url)}
-                className="group/img relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50 max-h-64 max-w-full w-fit cursor-pointer transition-all hover:opacity-95"
+                className="group/img relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50 max-h-36 max-w-[200px] sm:max-h-40 sm:max-w-[220px] w-fit cursor-pointer transition-all hover:opacity-95 shadow-2xs hover:shadow-xs"
                 title="Klik untuk melihat gambar penuh"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.url}
                   alt={img.fileName || 'Attachment'}
-                  className="max-h-64 w-auto object-contain rounded-xl"
+                  className="max-h-36 max-w-[200px] sm:max-h-40 sm:max-w-[220px] w-auto h-auto object-contain rounded-xl"
                   loading="lazy"
                 />
                 <div className="absolute inset-0 bg-black/10 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                  <span className="bg-white/90 text-gray-800 text-xs px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 font-medium">
+                  <span className="bg-white/90 text-gray-800 text-[11px] px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 font-medium">
                     <ExternalLink className="w-3 h-3" /> Preview
                   </span>
                 </div>
@@ -199,7 +199,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         {/* Comment Content */}
         {comment.content && (
           <div
-            className="text-xs sm:text-[12.5px] text-gray-800 leading-relaxed break-words [&_strong]:font-bold [&_strong]:text-gray-900 [&_code]:bg-gray-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-sm [&_code]:font-mono [&_code]:text-emerald-700 [&_a]:text-[#15803d] [&_a]:underline"
+            className="text-xs sm:text-[12.5px] text-gray-800 leading-relaxed break-words [&_strong]:font-bold [&_strong]:text-gray-900 [&_code]:bg-gray-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-sm [&_code]:font-mono [&_code]:text-emerald-700 [&_a]:text-[#15803d] [&_a]:underline [&_img]:max-h-36 [&_img]:max-w-[200px] sm:[&_img]:max-h-40 sm:[&_img]:max-w-[220px] [&_img]:rounded-lg [&_img]:object-contain [&_img]:my-1.5 [&_img]:cursor-pointer [&_img]:border [&_img]:border-gray-200"
             dangerouslySetInnerHTML={{
               __html: formatCommentHtml(comment.content, false),
             }}

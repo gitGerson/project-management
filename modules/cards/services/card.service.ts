@@ -190,6 +190,7 @@ export class CardService {
       status: card.status,
       rank: card.rank,
       sortOrder: card.sortOrder,
+      coverUrl: card.coverUrl || null,
       startDate: card.startDate
         ? card.startDate instanceof Date
           ? card.startDate.toISOString()
@@ -359,6 +360,7 @@ export class CardService {
         description: input.description?.trim() || null,
         startDate: input.startDate ? new Date(input.startDate) : null,
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        coverUrl: input.coverUrl ? input.coverUrl.trim() : null,
         status: 'active',
         rank: newRank,
         version: 1,
@@ -419,6 +421,9 @@ export class CardService {
         ...(input.title !== undefined && { title: input.title.trim() }),
         ...(input.description !== undefined && {
           description: input.description ? input.description.trim() : null,
+        }),
+        ...(input.coverUrl !== undefined && {
+          coverUrl: input.coverUrl ? input.coverUrl.trim() : null,
         }),
         ...(input.status !== undefined && { status: input.status.trim() }),
         ...(input.startDate !== undefined && {

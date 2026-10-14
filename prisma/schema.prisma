@@ -79,6 +79,7 @@ model Card {
   status      String    @default("active") @db.VarChar(20)
   rank        String    @db.VarChar(255)
   sortOrder   Int       @default(0) @map("sort_order")
+  coverUrl    String?   @map("cover_url") @db.VarChar(1024)
   startDate   DateTime? @map("start_date")
   dueDate     DateTime? @map("due_date")
   version     Int       @default(1)

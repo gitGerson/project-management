@@ -11,6 +11,9 @@ import { CardDateRangePicker } from './CardDateRangePicker';
 import { CardOwnerPicker } from './CardOwnerPicker';
 import { CardDescriptionEditor } from './CardDescriptionEditor';
 import { CardAttachmentsSection } from './CardAttachmentsSection';
+import { getCardCoverImage } from '@/lib/file-type';
+import { uploadFileDirectly } from '@/lib/upload-client';
+import { updateCardAction } from '../actions';
 import {
   X,
   AlignLeft,
@@ -19,6 +22,9 @@ import {
   Check,
   Trash2,
   ChevronDown,
+  Share2,
+  ImageIcon,
+  Loader2,
 } from 'lucide-react';
 
 const emptySubscribe = () => () => {};
@@ -82,6 +88,52 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
   // List selector dropdown
   const [isListMenuOpen, setIsListMenuOpen] = useState(false);
   const listMenuRef = useRef<HTMLDivElement>(null);
+
+  // Cover management states
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSetCover = async (newCoverUrl: string | null) => {
+    if (!card || !canUpdate) return;
+    const coverVal = newCoverUrl || 'none';
+    const updated = { ...card, coverUrl: newCoverUrl };
+    setCachedCard(updated);
+    onCardUpdated?.(updated);
+
+    try {
+      const res = await updateCardAction(card.id, { coverUrl: coverVal });
+      if (res.success && res.data) {
+        setCachedCard(res.data);
+        onCardUpdated?.(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to set cover:', err);
+    }
+  };
+
+  const handleUploadCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !card || !canUpdate) return;
+    setIsUploadingCover(true);
+    try {
+      const res = await uploadFileDirectly(file, { folder: 'card-covers' });
+      await handleSetCover(res.publicUrl);
+    } catch (err) {
+      console.error('Failed to upload cover:', err);
+    } finally {
+      setIsUploadingCover(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleShareCard = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
 
   // Synchronize state during render when switching to a different card
   const [prevCardId, setPrevCardId] = useState(propCard?.id);
@@ -246,115 +298,310 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
           isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
       >
-        {/* Top Header Bar */}
-        <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {/* List Selector / Badge */}
-            <div className="relative" ref={listMenuRef}>
-              <button
-                type="button"
-                onClick={() => canUpdate && setIsListMenuOpen((prev) => !prev)}
-                disabled={!canUpdate || lists.length <= 1}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                  canUpdate && lists.length > 1
-                    ? 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 cursor-pointer'
-                    : 'bg-gray-50 text-gray-600 border-gray-200 cursor-default'
-                }`}
-                title={canUpdate && lists.length > 1 ? 'Pindahkan ke daftar lain' : undefined}
-              >
-                <Columns3 className="w-3.5 h-3.5 text-gray-500" />
-                <span className="truncate max-w-[150px]">
-                  {currentList?.title || 'Daftar'}
-                </span>
-                {canUpdate && lists.length > 1 && (
-                  <ChevronDown className="w-3 h-3 text-gray-400" />
-                )}
-              </button>
+        {/* Top Header Bar / Cover Banner */}
+        {(() => {
+          const coverImage = getCardCoverImage(card);
 
-              {/* List Dropdown Menu */}
-              {isListMenuOpen && (
-                <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200/90 rounded-xl shadow-xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="px-2.5 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                    Pindahkan ke:
-                  </div>
-                  {lists.map((l) => (
+          if (coverImage) {
+            return (
+              <div className="h-28 sm:h-32 md:h-36 relative w-full overflow-hidden shrink-0 bg-slate-100 select-none group/cover">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={coverImage}
+                  alt={card.title}
+                  className="w-full h-full object-cover"
+                />
+
+                {/* Overlaid Top Header Bar */}
+                <div className="absolute inset-x-0 top-0 p-3 sm:p-3.5 flex items-center justify-between z-10 bg-gradient-to-b from-black/50 via-black/20 to-transparent">
+                  {/* List Selector / Badge */}
+                  <div className="relative" ref={listMenuRef}>
                     <button
-                      key={l.id}
                       type="button"
-                      onClick={() => handleSelectList(l.id)}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
-                        l.id === card.listId
-                          ? 'bg-emerald-50 text-emerald-700 font-semibold'
-                          : 'hover:bg-gray-50 text-gray-700'
+                      onClick={() => canUpdate && setIsListMenuOpen((prev) => !prev)}
+                      disabled={!canUpdate || lists.length <= 1}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-md shadow-md border transition-all ${
+                        canUpdate && lists.length > 1
+                          ? 'bg-slate-900/60 hover:bg-slate-900/80 text-white border-white/20 cursor-pointer'
+                          : 'bg-slate-900/60 text-white border-white/20 cursor-default'
                       }`}
+                      title={canUpdate && lists.length > 1 ? 'Pindahkan ke daftar lain' : undefined}
                     >
-                      <span className="truncate">{l.title}</span>
-                      {l.id === card.listId && (
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <Columns3 className="w-3.5 h-3.5 text-white/80" />
+                      <span className="truncate max-w-[150px]">
+                        {currentList?.title || 'Daftar'}
+                      </span>
+                      {canUpdate && lists.length > 1 && (
+                        <ChevronDown className="w-3 h-3 text-white/80" />
                       )}
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
 
-            {/* Status Badge */}
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              {card.status || 'Active'}
-            </span>
-          </div>
+                    {/* List Dropdown Menu */}
+                    {isListMenuOpen && (
+                      <div className="absolute top-full left-0 mt-1.5 w-52 bg-white border border-gray-200/90 rounded-xl shadow-xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                        <div className="px-2.5 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                          Pindahkan ke:
+                        </div>
+                        {lists.map((l) => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => handleSelectList(l.id)}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
+                              l.id === card.listId
+                                ? 'bg-emerald-50 text-emerald-700 font-semibold'
+                                : 'hover:bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            <span className="truncate">{l.title}</span>
+                            {l.id === card.listId && (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-          {/* Right Header Controls: Delete & Close */}
-          <div className="flex items-center gap-1.5">
-            {canDelete && (
-              <div className="relative">
-                {showConfirmDelete ? (
-                  <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-xl p-1 animate-in fade-in duration-100">
-                    <span className="text-[11px] font-semibold text-red-700 pl-1.5">
-                      Delete card?
-                    </span>
+                  {/* Right Header Controls: Share, Cover Actions, Delete & Close */}
+                  <div className="flex items-center gap-1.5">
+                    {/* Share Button (matches reference design) */}
                     <button
                       type="button"
-                      onClick={handleDeleteCard}
-                      disabled={isDeleting}
-                      className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer"
+                      onClick={handleShareCard}
+                      className="px-3 py-1.5 bg-white/90 hover:bg-white text-gray-700 rounded-xl text-xs font-semibold shadow-md backdrop-blur-xs border border-white/40 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Share card link"
                     >
-                      {isDeleting ? '...' : 'Yes'}
+                      <Share2 className="w-3.5 h-3.5 text-gray-500" />
+                      <span>{isCopied ? 'Copied!' : 'Share'}</span>
                     </button>
+
+                    {/* Cover Actions */}
+                    {canUpdate && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => coverInputRef.current?.click()}
+                          disabled={isUploadingCover}
+                          className="px-2.5 py-1.5 bg-white/90 hover:bg-white text-gray-700 rounded-xl text-xs font-semibold shadow-md backdrop-blur-xs border border-white/40 flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title="Change cover photo"
+                        >
+                          {isUploadingCover ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <ImageIcon className="w-3.5 h-3.5 text-gray-500" />
+                          )}
+                          <span className="hidden sm:inline">Cover</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSetCover(null)}
+                          className="p-1.5 bg-white/90 hover:bg-red-50 hover:text-red-600 text-gray-700 rounded-xl shadow-md backdrop-blur-xs border border-white/40 transition-colors cursor-pointer"
+                          title="Remove cover"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Delete Card */}
+                    {canDelete && (
+                      <div className="relative">
+                        {showConfirmDelete ? (
+                          <div className="flex items-center gap-1.5 bg-white/95 border border-red-200 rounded-xl p-1 shadow-lg animate-in fade-in duration-100">
+                            <span className="text-[11px] font-semibold text-red-700 pl-1.5">
+                              Delete?
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleDeleteCard}
+                              disabled={isDeleting}
+                              className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer"
+                            >
+                              {isDeleting ? '...' : 'Yes'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmDelete(false)}
+                              className="px-2 py-0.5 bg-white text-gray-600 hover:bg-gray-100 text-[11px] font-medium rounded-lg transition-colors cursor-pointer border border-gray-200"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmDelete(true)}
+                            className="p-1.5 bg-white/90 hover:bg-red-50 text-gray-700 hover:text-red-600 rounded-xl shadow-md backdrop-blur-xs border border-white/40 transition-colors cursor-pointer"
+                            title="Delete card"
+                            aria-label="Delete card"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Close Button */}
                     <button
                       type="button"
-                      onClick={() => setShowConfirmDelete(false)}
-                      className="px-2 py-0.5 bg-white text-gray-600 hover:bg-gray-100 text-[11px] font-medium rounded-lg transition-colors cursor-pointer border border-gray-200"
+                      onClick={handleDismiss}
+                      className="p-1.5 bg-white/90 hover:bg-white text-gray-700 rounded-xl shadow-md backdrop-blur-xs border border-white/40 transition-colors cursor-pointer"
+                      title="Close (Esc)"
+                      aria-label="Close modal"
                     >
-                      Cancel
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
-                ) : (
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
+              <div className="flex items-center gap-2.5 min-w-0">
+                {/* List Selector / Badge */}
+                <div className="relative" ref={listMenuRef}>
                   <button
                     type="button"
-                    onClick={() => setShowConfirmDelete(true)}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                    title="Delete card"
-                    aria-label="Delete card"
+                    onClick={() => canUpdate && setIsListMenuOpen((prev) => !prev)}
+                    disabled={!canUpdate || lists.length <= 1}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                      canUpdate && lists.length > 1
+                        ? 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 cursor-pointer'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 cursor-default'
+                    }`}
+                    title={canUpdate && lists.length > 1 ? 'Pindahkan ke daftar lain' : undefined}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Columns3 className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="truncate max-w-[150px]">
+                      {currentList?.title || 'Daftar'}
+                    </span>
+                    {canUpdate && lists.length > 1 && (
+                      <ChevronDown className="w-3 h-3 text-gray-400" />
+                    )}
+                  </button>
+
+                  {/* List Dropdown Menu */}
+                  {isListMenuOpen && (
+                    <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200/90 rounded-xl shadow-xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="px-2.5 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Pindahkan ke:
+                      </div>
+                      {lists.map((l) => (
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={() => handleSelectList(l.id)}
+                          className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
+                            l.id === card.listId
+                              ? 'bg-emerald-50 text-emerald-700 font-semibold'
+                              : 'hover:bg-gray-50 text-gray-700'
+                          }`}
+                        >
+                          <span className="truncate">{l.title}</span>
+                          {l.id === card.listId && (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Header Controls: Share, Add Cover, Delete & Close */}
+              <div className="flex items-center gap-1.5">
+                {/* Share Button */}
+                <button
+                  type="button"
+                  onClick={handleShareCard}
+                  className="px-2.5 py-1.5 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-gray-200"
+                  title="Share card link"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-gray-500" />
+                  <span>{isCopied ? 'Copied!' : 'Share'}</span>
+                </button>
+
+                {/* Add Cover Button */}
+                {canUpdate && (
+                  <button
+                    type="button"
+                    onClick={() => coverInputRef.current?.click()}
+                    disabled={isUploadingCover}
+                    className="px-2.5 py-1.5 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-gray-200"
+                    title="Add card cover"
+                  >
+                    {isUploadingCover ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ImageIcon className="w-3.5 h-3.5 text-gray-500" />
+                    )}
+                    <span>Add Cover</span>
                   </button>
                 )}
-              </div>
-            )}
 
-            <button
-              type="button"
-              onClick={handleDismiss}
-              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
-              title="Close (Esc)"
-              aria-label="Close modal"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+                {canDelete && (
+                  <div className="relative">
+                    {showConfirmDelete ? (
+                      <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-xl p-1 animate-in fade-in duration-100">
+                        <span className="text-[11px] font-semibold text-red-700 pl-1.5">
+                          Delete card?
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleDeleteCard}
+                          disabled={isDeleting}
+                          className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer"
+                        >
+                          {isDeleting ? '...' : 'Yes'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmDelete(false)}
+                          className="px-2 py-0.5 bg-white text-gray-600 hover:bg-gray-100 text-[11px] font-medium rounded-lg transition-colors cursor-pointer border border-gray-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmDelete(true)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                        title="Delete card"
+                        aria-label="Delete card"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleDismiss}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+                  title="Close (Esc)"
+                  aria-label="Close modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Hidden Cover File Input */}
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleUploadCover}
+        />
 
         {/* Mobile Tab Switcher (< lg) */}
         <div className="lg:hidden flex items-center border-b border-gray-100 bg-gray-50/60 px-4 shrink-0">
@@ -551,6 +798,8 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
                 cardId={card.id}
                 attachments={card.attachments}
                 canUpdate={canUpdate}
+                currentCoverUrl={getCardCoverImage(card)}
+                onSetCover={handleSetCover}
                 onAttachmentAdded={(newAttachment) => {
                   if (!card) return;
                   const updatedCard: CardDTO = {
