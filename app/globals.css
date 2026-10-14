@@ -63,3 +63,167 @@ textarea::-moz-placeholder {
     animation: none !important;
   }
 }
+
+/* Ultra-thin, subtle modern scrollbars across the application */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 3.5px;
+  height: 3.5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.32);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 3.5px;
+  height: 3.5px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.32);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* TipTap Rich Text Editor styles */
+.tiptap-content {
+  color: #1f2937;
+  font-size: 0.8125rem; /* 13px default, compact & sleek */
+  line-height: 1.55;
+}
+
+.tiptap-content:focus {
+  outline: none;
+}
+
+.tiptap-content p {
+  margin-bottom: 0.45rem;
+}
+
+.tiptap-content p:last-child {
+  margin-bottom: 0;
+}
+
+.tiptap-content h2 {
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 700;
+  color: #111827;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.tiptap-content h3 {
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 700;
+  color: #111827;
+  margin-top: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.tiptap-content ul {
+  list-style-type: disc !important;
+  padding-left: 1.15rem !important;
+  margin: 0.375rem 0 !important;
+}
+
+.tiptap-content ol {
+  list-style-type: decimal !important;
+  padding-left: 1.15rem !important;
+  margin: 0.375rem 0 !important;
+}
+
+.tiptap-content li {
+  margin-bottom: 0.2rem;
+}
+
+.tiptap-content blockquote {
+  border-left: 3px solid #10b981;
+  padding-left: 0.625rem;
+  margin: 0.5rem 0;
+  color: #4b5563;
+  font-style: italic;
+}
+
+.tiptap-content code {
+  background-color: #f3f4f6;
+  color: #db2777;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.375rem;
+}
+
+.tiptap-content pre {
+  background-color: #111827;
+  color: #f9fafb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.7rem;
+  padding: 0.625rem;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+  margin: 0.45rem 0;
+}
+
+.tiptap-content a {
+  color: #059669;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.tiptap-content hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 0.75rem 0;
+  cursor: pointer;
+}
+
+.tiptap-content hr.ProseMirror-selectednode {
+  border-top: 2px solid #10b981;
+}
+
+.tiptap-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9ca3af;
+  pointer-events: none;
+  height: 0;
+}
+

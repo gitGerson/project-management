@@ -9,6 +9,7 @@ import { CardLabelPicker } from './CardLabelPicker';
 import { CardMemberPicker } from './CardMemberPicker';
 import { CardDateRangePicker } from './CardDateRangePicker';
 import { CardOwnerPicker } from './CardOwnerPicker';
+import { CardDescriptionEditor } from './CardDescriptionEditor';
 import {
   X,
   AlignLeft,
@@ -59,8 +60,6 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
 
   // Description editing state
   const [isEditingDesc, setIsEditingDesc] = useState(false);
-  const [descValue, setDescValue] = useState('');
-  const descTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Delete confirmation
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
@@ -81,7 +80,6 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
     if (card) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setTitleValue(card.title);
-      setDescValue(card.description || '');
       setIsEditingTitle(false);
       setIsEditingDesc(false);
       setShowConfirmDelete(false);
@@ -112,7 +110,6 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
         }
         if (isEditingDesc) {
           setIsEditingDesc(false);
-          setDescValue(card?.description || '');
           return;
         }
         onClose();
@@ -143,13 +140,6 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
     }
   }, [isEditingTitle]);
 
-  // Focus description textarea on edit
-  useEffect(() => {
-    if (isEditingDesc && descTextareaRef.current) {
-      descTextareaRef.current.focus();
-    }
-  }, [isEditingDesc]);
-
   if (!mounted || !isOpen || !card) {
     return null;
   }
@@ -173,26 +163,6 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
       setIsEditingTitle(false);
     } else {
       setTitleValue(card.title);
-    }
-  };
-
-  // Handle description save
-  const handleSaveDescription = async () => {
-    const trimmed = descValue.trim();
-    const newDesc = trimmed.length > 0 ? trimmed : null;
-    if (newDesc === card.description) {
-      setIsEditingDesc(false);
-      return;
-    }
-
-    setIsSaving(true);
-    const success = await onUpdateCard(card.id, { description: newDesc });
-    setIsSaving(false);
-
-    if (success) {
-      setIsEditingDesc(false);
-    } else {
-      setDescValue(card.description || '');
     }
   };
 
@@ -502,84 +472,35 @@ export const CardDetailModal: React.FC<CardDetailModalProps> = ({
 
             {/* Description Section */}
             <div className="flex-1 flex flex-col">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <AlignLeft className="w-4 h-4 text-gray-600" />
-                  <h3 className="text-xs sm:text-sm font-bold text-gray-900 uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <AlignLeft className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
                     Description
-                  </h3>
+                  </span>
                 </div>
 
                 {!isEditingDesc && canUpdate && (
                   <button
                     type="button"
                     onClick={() => setIsEditingDesc(true)}
-                    className="px-2.5 py-1 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+                    className="px-2 py-0.5 text-[11px] font-semibold text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
                   >
                     {card.description ? 'Edit' : 'Add'}
                   </button>
                 )}
               </div>
 
-              {isEditingDesc && canUpdate ? (
-                <div className="flex flex-col gap-2.5">
-                  <textarea
-                    ref={descTextareaRef}
-                    rows={6}
-                    value={descValue}
-                    onChange={(e) => setDescValue(e.target.value)}
-                    disabled={isSaving}
-                    placeholder="Add a more detailed description for this card..."
-                    className="w-full text-xs sm:text-sm text-gray-800 bg-gray-50 border border-emerald-500 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 leading-relaxed resize-y"
-                  />
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleSaveDescription}
-                      disabled={isSaving}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs disabled:opacity-50"
-                    >
-                      {isSaving ? 'Saving...' : 'Save Description'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDescValue(card.description || '');
-                        setIsEditingDesc(false);
-                      }}
-                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : card.description ? (
-                <div
-                  onClick={() => canUpdate && setIsEditingDesc(true)}
-                  className={`p-4 bg-gray-50/70 border border-gray-100 rounded-2xl text-xs sm:text-sm text-gray-800 leading-relaxed whitespace-pre-wrap ${
-                    canUpdate ? 'cursor-pointer hover:border-gray-200 transition-colors' : ''
-                  }`}
-                  title={canUpdate ? 'Click to edit description' : undefined}
-                >
-                  {card.description}
-                </div>
-              ) : (
-                <div
-                  onClick={() => canUpdate && setIsEditingDesc(true)}
-                  className={`p-6 border border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-center text-gray-400 ${
-                    canUpdate ? 'cursor-pointer hover:border-emerald-300 hover:bg-emerald-50/30 transition-colors' : ''
-                  }`}
-                >
-                  <p className="text-xs font-medium text-gray-500">
-                    No description provided for this card.
-                  </p>
-                  {canUpdate && (
-                    <p className="text-[11px] text-emerald-600 font-semibold mt-1">
-                      Click here to add a description...
-                    </p>
-                  )}
-                </div>
-              )}
+              <CardDescriptionEditor
+                cardId={card.id}
+                initialDescription={card.description}
+                canUpdate={canUpdate}
+                isEditing={isEditingDesc}
+                onEditingChange={setIsEditingDesc}
+                onSave={async (newDesc) => {
+                  return await onUpdateCard(card.id, { description: newDesc });
+                }}
+              />
             </div>
           </div>
 
