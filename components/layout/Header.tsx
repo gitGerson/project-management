@@ -65,15 +65,14 @@ export function Header({ user, pinnedBoards = [] }: HeaderProps) {
     <header className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 pt-4">
       <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-gray-100 px-4 sm:px-6 py-2.5 flex items-center justify-between relative">
         {/* Left: Brand Logo */}
-        <div className="flex items-center">
-          <Link href="/" className="inline-flex items-center transition hover:opacity-90">
+        <div className="flex items-center shrink-0">
+          <Link href="/" className="inline-flex items-center h-9 shrink-0 transition hover:opacity-90">
             <Image
               src="/assets/logo.png"
               alt="Tong Tji Logo"
-              width={112}
-              height={42}
-              className="h-9 w-auto object-contain"
-              style={{ width: 'auto', height: 'auto' }}
+              width={72}
+              height={36}
+              className="h-9 w-auto max-h-9 object-contain"
               priority
             />
           </Link>

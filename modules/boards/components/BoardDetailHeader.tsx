@@ -96,14 +96,13 @@ export function BoardDetailHeader({
               <ArrowLeft className="w-4 h-4" />
             </Link>
 
-            <Link href="/" className="hidden sm:inline-flex items-center shrink-0">
+            <Link href="/" className="hidden sm:inline-flex items-center h-7 shrink-0 transition hover:opacity-90">
               <Image
                 src="/assets/logo.png"
                 alt="Tong Tji Logo"
-                width={76}
+                width={56}
                 height={28}
-                className="h-7 w-auto object-contain"
-                style={{ width: 'auto', height: 'auto' }}
+                className="h-7 w-auto max-h-7 object-contain"
                 priority
               />
             </Link>
