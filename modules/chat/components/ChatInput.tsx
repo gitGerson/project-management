@@ -6,6 +6,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Mention from '@tiptap/extension-mention';
 import type {
   CommentAttachmentDTO,
   CommentReplyDTO,
@@ -27,6 +28,62 @@ import {
   Loader2,
   CornerDownRight,
 } from 'lucide-react';
+
+const CustomMention = Mention.extend({
+  addAttributes() {
+    return {
+      id: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-id'),
+        renderHTML: (attributes) => {
+          if (!attributes.id) return {};
+          return { 'data-id': attributes.id };
+        },
+      },
+      label: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-label'),
+        renderHTML: (attributes) => {
+          if (!attributes.label) return {};
+          return { 'data-label': attributes.label };
+        },
+      },
+      username: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-username'),
+        renderHTML: (attributes) => {
+          if (!attributes.username) return {};
+          return { 'data-username': attributes.username };
+        },
+      },
+    };
+  },
+  addProseMirrorPlugins() {
+    return [];
+  },
+}).configure({
+  HTMLAttributes: {
+    class:
+      'inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded-md text-[11.5px] font-semibold bg-emerald-50 text-[#15803d] border border-emerald-200/90 align-baseline select-none shadow-2xs',
+  },
+  renderHTML({ options, node }) {
+    const label = node.attrs.label || node.attrs.username || node.attrs.id || '';
+    return [
+      'span',
+      {
+        'data-type': 'mention',
+        'data-id': String(node.attrs.id || ''),
+        'data-label': String(label),
+        'data-username': String(node.attrs.username || ''),
+        class: options.HTMLAttributes.class,
+      },
+      `@${label}`,
+    ];
+  },
+  renderText({ node }) {
+    return `@${node.attrs.label || node.attrs.username || node.attrs.id}`;
+  },
+});
 
 interface ChatInputProps {
   onSendMessage: (payload: {
@@ -125,6 +182,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       Placeholder.configure({
         placeholder,
       }),
+      CustomMention,
     ],
     editorProps: {
       attributes: {
@@ -155,14 +213,53 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           return handled;
         },
         keydown: (_view, event) => {
+          const { query, candidates, index, selectMention } = mentionStateRef.current;
+
+          // When mention autocomplete popup is open with candidates
+          if (query !== null && candidates.length > 0) {
+            // Tab or Enter: Apply the selected mention candidate
+            if (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey)) {
+              event.preventDefault();
+              event.stopPropagation();
+              const chosen = candidates[index] || candidates[0];
+              if (chosen) {
+                selectMention(chosen);
+              }
+              return true;
+            }
+
+            // ArrowDown: navigate to next candidate
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              event.stopPropagation();
+              setMentionIndex((prev) => (prev + 1) % candidates.length);
+              return true;
+            }
+
+            // ArrowUp: navigate to previous candidate
+            if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              event.stopPropagation();
+              setMentionIndex((prev) => (prev - 1 + candidates.length) % candidates.length);
+              return true;
+            }
+
+            // Escape: close mention popup
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              event.stopPropagation();
+              setMentionQuery(null);
+              return true;
+            }
+          }
+
           // If Enter pressed without Shift: submit
           if (event.key === 'Enter' && !event.shiftKey) {
-            // But if mention popup is open, don't submit yet
-            if (mentionQuery !== null) {
+            if (query !== null) {
               return false;
             }
             event.preventDefault();
-            handleSend();
+            handleSendRef.current();
             return true;
           }
           return false;
@@ -185,13 +282,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     },
   });
 
-  // Focus editor when replyingTo changes
-  useEffect(() => {
-    if (replyingTo && editor) {
-      editor.commands.focus('end');
-    }
-  }, [replyingTo, editor]);
-
   // Handle selecting a mention candidate
   const handleSelectMention = (user: MentionUserDTO) => {
     if (!editor) return;
@@ -201,13 +291,28 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     const textBefore = state.doc.textBetween(Math.max(0, from - 20), from, '\n', '\0');
     const match = textBefore.match(/@([a-zA-Z0-9_.-]*)$/);
 
+    const displayName = user.name || user.username;
+
     if (match) {
       const matchLength = match[0].length;
       editor
         .chain()
         .focus()
         .deleteRange({ from: from - matchLength, to: from })
-        .insertContent(`@${user.username} `)
+        .insertContent([
+          {
+            type: 'mention',
+            attrs: {
+              id: String(user.id),
+              label: displayName,
+              username: user.username,
+            },
+          },
+          {
+            type: 'text',
+            text: ' ',
+          },
+        ])
         .run();
     }
 
@@ -226,6 +331,36 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           })
           .slice(0, 6)
       : [];
+
+  // Keep state ref in sync for keydown handler closures
+  const mentionStateRef = useRef({
+    query: mentionQuery,
+    candidates: filteredCandidates,
+    index: mentionIndex,
+    selectMention: handleSelectMention,
+  });
+  mentionStateRef.current = {
+    query: mentionQuery,
+    candidates: filteredCandidates,
+    index: mentionIndex,
+    selectMention: handleSelectMention,
+  };
+
+  // Adjust mentionIndex if filtered candidates count decreases
+  useEffect(() => {
+    if (mentionIndex >= filteredCandidates.length && filteredCandidates.length > 0) {
+      setMentionIndex(0);
+    }
+  }, [filteredCandidates.length, mentionIndex]);
+
+  // Focus editor when replyingTo changes
+  useEffect(() => {
+    if (replyingTo && editor) {
+      editor.commands.focus('end');
+    }
+  }, [replyingTo, editor]);
+
+  const handleSendRef = useRef<() => void>(() => {});
 
   const handleSend = async () => {
     if (!editor || isSubmitting || disabled || uploadingFiles.length > 0) return;
@@ -256,6 +391,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       setIsSubmitting(false);
     }
   };
+  handleSendRef.current = handleSend;
 
   const removeAttachment = (index: number) => {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
@@ -274,42 +410,53 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       {mentionQuery !== null && filteredCandidates.length > 0 && (
         <div className="relative z-30">
           <div className="absolute bottom-2 left-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 max-h-56 overflow-y-auto scrollbar-thin">
-            <div className="px-3.5 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-              Mention Member
+            <div className="px-3.5 py-1.5 flex items-center justify-between border-b border-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              <span>Mention Member</span>
+              <span className="text-[9px] font-medium lowercase bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">
+                tekan tab ⇥
+              </span>
             </div>
             {filteredCandidates.map((user, i) => (
               <button
                 key={user.id}
                 type="button"
+                onMouseEnter={() => setMentionIndex(i)}
                 onClick={() => handleSelectMention(user)}
-                className={`w-full text-left px-3.5 py-2 flex items-center gap-2.5 transition-colors cursor-pointer ${
+                className={`w-full text-left px-3.5 py-2 flex items-center justify-between gap-2.5 transition-colors cursor-pointer ${
                   i === mentionIndex
                     ? 'bg-emerald-50 text-[#15803d]'
                     : 'hover:bg-gray-50 text-gray-800'
                 }`}
               >
-                {user.profilePicture ? (
-                  <Image
-                    src={user.profilePicture}
-                    alt={user.name}
-                    width={24}
-                    height={24}
-                    unoptimized
-                    className="w-6 h-6 rounded-full object-cover border border-gray-100 shrink-0"
-                  />
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-[#15803d] font-bold text-[10px] flex items-center justify-center shrink-0 uppercase">
-                    {user.initials || 'U'}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {user.profilePicture ? (
+                    <Image
+                      src={user.profilePicture}
+                      alt={user.name}
+                      width={24}
+                      height={24}
+                      unoptimized
+                      className="w-6 h-6 rounded-full object-cover border border-gray-100 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 text-[#15803d] font-bold text-[10px] flex items-center justify-center shrink-0 uppercase">
+                      {user.initials || 'U'}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold truncate leading-tight">
+                      {user.name}
+                    </p>
+                    <p className="text-[11px] text-gray-400 truncate">
+                      @{user.username}
+                    </p>
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold truncate leading-tight">
-                    {user.name}
-                  </p>
-                  <p className="text-[11px] text-gray-400 truncate">
-                    @{user.username}
-                  </p>
                 </div>
+                {i === mentionIndex && (
+                  <span className="text-[10px] font-semibold bg-emerald-100/90 text-emerald-800 px-1.5 py-0.5 rounded text-xs shrink-0 shadow-2xs">
+                    Tab ↵
+                  </span>
+                )}
               </button>
             ))}
           </div>

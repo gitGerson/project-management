@@ -1,4 +1,4 @@
-import type { CommentAttachmentDTO, CommentReplyDTO } from '../types';
+import type { CommentAttachmentDTO, CommentReplyDTO, MentionUserDTO } from '../types';
 
 /**
  * Escapes HTML entities for safe embedding
@@ -131,7 +131,11 @@ export function parseCommentContent(rawHtml: string): ParsedComment {
   // Strip attachment spans from clean text
   text = text.replace(/<span\b[^>]*data-comment-attachment=["']1["'][^>]*>[\s\S]*?<\/span>/gi, '');
 
-  // 4. Extract v1 mention spans: <span data-type="mention" data-id="123">@candrawijaya</span>
+  // 4. Extract mention spans: <span data-type="mention" data-label="ADMIN" ...>@ADMIN</span>
+  text = text.replace(
+    /<span\b[^>]*data-type=["']mention["'][^>]*data-label=["']([^"']*)["'][^>]*>([\s\S]*?)<\/span>/gi,
+    (_match, label, inner) => `@${label || inner.replace(/^@/, '')}`
+  );
   text = text.replace(
     /<span\b[^>]*data-type=["']mention["'][^>]*>([\s\S]*?)<\/span>/gi,
     '$1'
@@ -147,9 +151,13 @@ export function parseCommentContent(rawHtml: string): ParsedComment {
 }
 
 /**
- * Prepares and highlights HTML content with mention pills safely
+ * Prepares and highlights HTML content with member mentions in clean full-name style
  */
-export function formatCommentHtml(content: string, isMine: boolean): string {
+export function formatCommentHtml(
+  content: string,
+  isMine: boolean,
+  mentionCandidates?: MentionUserDTO[]
+): string {
   if (!content) return '';
 
   let html = content.trim();
@@ -160,14 +168,38 @@ export function formatCommentHtml(content: string, isMine: boolean): string {
     html = escapeHtml(html).replace(/\n/g, '<br />');
   }
 
-  // Replace @username with mention pill span
+  // Clean mention text style: full name in brand emerald text
   const mentionClass = isMine
-    ? 'inline-flex items-center px-1.5 py-0.2 mx-0.5 rounded-md text-[12px] font-semibold bg-white/20 text-white align-baseline'
-    : 'inline-flex items-center px-1.5 py-0.2 mx-0.5 rounded-md text-[12px] font-semibold bg-[#dcfce7] text-[#15803d] align-baseline';
+    ? 'font-semibold text-emerald-800 select-none'
+    : 'font-semibold text-[#15803d] select-none';
 
-  // Replace @username with styled span
-  html = html.replace(/(?<![="'>])@([a-zA-Z0-9_.-]+)(?![<"'])/g, (_match, username) => {
-    return `<span class="${mentionClass}">@${username}</span>`;
+  // 1. If we have mentionCandidates, match either @username or @FullName, and display the full name
+  if (mentionCandidates && mentionCandidates.length > 0) {
+    // Sort candidates by name length descending so longer full names match first
+    const sorted = [...mentionCandidates].sort(
+      (a, b) => (b.name?.length || 0) - (a.name?.length || 0)
+    );
+
+    for (const member of sorted) {
+      const fullName = member.name?.trim();
+      const username = member.username?.trim();
+
+      const escapedFull = fullName ? fullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : null;
+      const escapedUser = username ? username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : null;
+
+      const pattern = [escapedFull, escapedUser].filter(Boolean).join('|');
+      if (!pattern) continue;
+
+      const regex = new RegExp(`(^|[\\s>])@(?:${pattern})(?=[\\s<,.:;!?]|$)`, 'gi');
+      html = html.replace(regex, (_match, prefix) => {
+        return `${prefix}<span class="${mentionClass}">@${escapeHtml(fullName || username || '')}</span>`;
+      });
+    }
+  }
+
+  // 2. Generic fallback for any remaining @mentions not in candidate list
+  html = html.replace(/(^|[\s>])@([a-zA-Z0-9_.-]+)(?=[\s<,.:;!?]|$)/g, (_match, prefix, user) => {
+    return `${prefix}<span class="${mentionClass}">@${escapeHtml(user)}</span>`;
   });
 
   return html;

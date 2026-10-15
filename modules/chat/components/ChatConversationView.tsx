@@ -350,6 +350,7 @@ export const ChatConversationView: React.FC<ChatConversationViewProps> = ({
               isMine={comment.userId === currentUserId}
               pending={Boolean(comment.isPending || (comment.tempId && comment.id < 0))}
               onReply={handleReply}
+              mentionCandidates={mentionCandidates}
             />
           ))
         )}

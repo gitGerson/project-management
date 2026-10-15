@@ -259,6 +259,7 @@ export const CardCommentsSection: React.FC<CardCommentsSectionProps> = ({
                 isMine={comment.userId === currentUserId}
                 pending={comment.isPending}
                 onReply={handleReply}
+                mentionCandidates={mentionCandidates}
               />
             ))}
             <div ref={messagesEndRef} />

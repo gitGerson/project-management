@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import type { CommentDTO } from '../types';
+import type { CommentDTO, MentionUserDTO } from '../types';
 import { formatFileSize, formatCommentHtml } from '../utils/comment-parser';
 import { getFileTypeStyle } from '@/lib/file-type';
 import {
@@ -21,6 +21,7 @@ interface ChatMessageItemProps {
   showAuthorName?: boolean;
   isCompact?: boolean;
   onReply?: (comment: CommentDTO) => void;
+  mentionCandidates?: MentionUserDTO[];
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
@@ -28,6 +29,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   isMine = false,
   pending = false,
   onReply,
+  mentionCandidates,
 }) => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
@@ -201,7 +203,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           <div
             className="text-xs sm:text-[12.5px] text-gray-800 leading-relaxed break-words [&_strong]:font-bold [&_strong]:text-gray-900 [&_code]:bg-gray-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-sm [&_code]:font-mono [&_code]:text-emerald-700 [&_a]:text-[#15803d] [&_a]:underline [&_img]:max-h-36 [&_img]:max-w-[200px] sm:[&_img]:max-h-40 sm:[&_img]:max-w-[220px] [&_img]:rounded-lg [&_img]:object-contain [&_img]:my-1.5 [&_img]:cursor-pointer [&_img]:border [&_img]:border-gray-200"
             dangerouslySetInnerHTML={{
-              __html: formatCommentHtml(comment.content, false),
+              __html: formatCommentHtml(comment.content, isMine, mentionCandidates),
             }}
           />
         )}

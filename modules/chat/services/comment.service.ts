@@ -411,9 +411,22 @@ export class CommentService {
   async listMentionCandidates(scopeType: string, scopeId: number): Promise<MentionUserDTO[]> {
     const canonicalScope = normalizeScopeType(scopeType);
 
+    let boardId: number | null = null;
     if (canonicalScope === 'board') {
+      boardId = scopeId;
+    } else if (canonicalScope === 'card') {
+      const card = await prisma.card.findUnique({
+        where: { id: scopeId },
+        select: { boardId: true },
+      });
+      if (card) {
+        boardId = card.boardId;
+      }
+    }
+
+    if (boardId) {
       const members = await prisma.boardMember.findMany({
-        where: { boardId: scopeId },
+        where: { boardId },
         include: {
           user: {
             select: {
@@ -422,6 +435,11 @@ export class CommentService {
               username: true,
               profilePicture: true,
             },
+          },
+        },
+        orderBy: {
+          user: {
+            name: 'asc',
           },
         },
       });
