@@ -7,7 +7,7 @@
     "dev": "node --env-file=.env.local server.mjs",
     "dev:next": "next dev",
     "build": "next build",
-    "start": "NODE_ENV=production node server.mjs",
+    "start": "NODE_ENV=production node --env-file=.env.local server.mjs",
     "start:next": "next start",
     "lint": "eslint",
     "db:test": "node --env-file=.env.local scripts/test-db.mjs",
